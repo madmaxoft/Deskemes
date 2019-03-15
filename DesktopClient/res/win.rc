@@ -1,0 +1,3 @@
+// Note: All files referenced from here need to be added to CMakeLists.txt, too,
+// so that they are considered dependencies
+IDI_ICON1 ICON DISCARDABLE "img/Deskemes.ico"

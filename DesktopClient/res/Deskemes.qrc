@@ -1,0 +1,7 @@
+<RCC>
+    <qresource prefix="/">
+        <file>img/bluetooth.png</file>
+        <file>img/usb.png</file>
+        <file>img/wifi.png</file>
+    </qresource>
+</RCC>

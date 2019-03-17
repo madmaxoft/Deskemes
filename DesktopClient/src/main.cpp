@@ -16,6 +16,7 @@
 #include "DB/Database.hpp"
 #include "UI/WndDevices.hpp"
 #include "Comm/DetectedDevices.hpp"
+#include "Comm/UdpBroadcaster.hpp"
 
 
 
@@ -101,12 +102,16 @@ int main(int argc, char *argv[])
 		qRegisterMetaType<DetectedDevices::DeviceStatusList>();
 		auto instConf = std::make_shared<InstallConfiguration>();
 		Settings::init(instConf->dataLocation("Deskemes.ini"));
+		instConf->loadFromSettings();
 
 		// Create the main app objects:
 		ComponentCollection cc;
-		cc.addComponent(instConf);		
-		auto mainDB = cc.addNew<Database>(cc);
-		auto devs   = cc.addNew<Devices>(cc);
+		cc.addComponent(instConf);
+		auto mainDB      = cc.addNew<Database>(cc);
+		auto devs        = cc.addNew<Devices>(cc);
+		auto broadcaster = cc.addNew<UdpBroadcaster>(cc);
+
+		broadcaster->start();
 
 		// Connect the main objects together:
 

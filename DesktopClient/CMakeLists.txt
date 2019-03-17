@@ -147,6 +147,7 @@ set(SOURCES
 	# The Communication-related sources:
 	src/Comm/AdbCommunicator.cpp
 	src/Comm/DetectedDevices.cpp
+	src/Comm/UdpBroadcaster.cpp
 	src/Comm/UsbDeviceEnumerator.cpp
 
 	# DB-related sources:
@@ -172,12 +173,14 @@ set(SOURCES
 	src/InstallConfiguration.cpp
 	src/main.cpp
 	src/Settings.cpp
+	src/Utils.cpp
 )
 
 set(HEADERS
 	# The Communication-related headers:
 	src/Comm/AdbCommunicator.hpp
 	src/Comm/DetectedDevices.hpp
+	src/Comm/UdpBroadcaster.hpp
 	src/Comm/UsbDeviceEnumerator.hpp
 
 	# DB-related headers:
@@ -203,6 +206,7 @@ set(HEADERS
 	src/Exception.hpp
 	src/InstallConfiguration.hpp
 	src/Settings.hpp
+	src/Utils.hpp
 )
 
 set(UI

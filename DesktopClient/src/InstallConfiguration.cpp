@@ -4,6 +4,10 @@
 #include <QFileInfo>
 #include <QDebug>
 #include <QStandardPaths>
+#include <QCryptographicHash>
+#include <QDateTime>
+#include <QNetworkInterface>
+#include "Settings.hpp"
 
 
 
@@ -22,6 +26,15 @@ InstallConfiguration::InstallConfiguration():
 	mDataPath(detectDataPath())
 {
 	qDebug() << "Using data path " << mDataPath;
+}
+
+
+
+
+
+void InstallConfiguration::loadFromSettings()
+{
+	loadOrGeneratePublicID();
 }
 
 
@@ -79,4 +92,33 @@ bool InstallConfiguration::isDataPathSuitable(const QString & aFolder)
 	#endif
 
 	return res;
+}
+
+
+
+
+
+void InstallConfiguration::loadOrGeneratePublicID()
+{
+	auto id = Settings::loadValue("InstallConfiguration", "PublicID", {});
+	if (id.isValid())
+	{
+		return;
+	}
+
+	// Generate and store a new PublicID:
+	// Use a crypto hash of current time, network addresses and username-related paths to provide at least some entropy:
+	qDebug() << "Public ID not set, creating a new one";
+	QCryptographicHash hash(QCryptographicHash::Sha512);
+	auto time = QDateTime::currentMSecsSinceEpoch();
+	hash.addData(reinterpret_cast<const char *>(&time), sizeof(time));
+	auto netAddrs = QNetworkInterface::allAddresses();
+	for (const auto & addr: netAddrs)
+	{
+		hash.addData(addr.toString().toUtf8());
+	}
+	hash.addData(QStandardPaths::writableLocation(QStandardPaths::HomeLocation).toUtf8());
+	mPublicID = hash.result();
+	qDebug() << "Public ID generated: " << mPublicID;
+	Settings::saveValue("InstallConfiguration", "PublicID", mPublicID);
 }

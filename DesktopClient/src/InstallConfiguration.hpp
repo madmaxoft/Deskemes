@@ -10,7 +10,8 @@
 /** Provides information that is specific to this installation of the program:
 - writable data location
 - DB location
-- backups location */
+- backups location
+- the instance ID of this installation */
 class InstallConfiguration:
 	public ComponentCollection::Component<ComponentCollection::ckInstallConfiguration>
 {
@@ -29,12 +30,24 @@ public:
 	/** Returns the path to the folder into which DB backups should be stored. */
 	QString dbBackupsFolder() const { return dataLocation("backups/"); }
 
+	/** Loads the values that are stored in the Settings object.
+	This is only used during app initialization. */
+	void loadFromSettings();
+
+
+	// Simple getters:
+	const QByteArray & publicID() const { return mPublicID; }
+
 
 protected:
 
 	/** The base path where Deskemes should store its data (writable).
 	If nonempty, includes the trailing slash. */
 	QString mDataPath;
+
+	/** The public ID of the Deskemes instance, as read from the Settings, and used as identification
+	for communicating with the devices. */
+	QByteArray mPublicID;
 
 
 	/** Returns the folder to use for m_DataPath.
@@ -46,4 +59,7 @@ protected:
 	Checks that the path is writable.
 	If the path doesn't exist, creates it. */
 	bool isDataPathSuitable(const QString & aFolder);
+
+	/** Loads the public ID from the Settings, or generates a new one if not present. */
+	void loadOrGeneratePublicID();
 };

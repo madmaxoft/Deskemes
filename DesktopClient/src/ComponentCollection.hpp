@@ -30,9 +30,7 @@ public:
 		ckInstallConfiguration,
 		ckDatabase,
 		ckDevices,
-		ckUsbDeviceEnumerator,
-		ckTcpDeviceEnumerator,
-		ckBluetoothDeviceEnumerator,
+		ckUdpBroadcaster,
 	};
 
 

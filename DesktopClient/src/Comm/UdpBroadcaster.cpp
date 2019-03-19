@@ -4,6 +4,7 @@
 #include <QUdpSocket>
 #include "../Utils.hpp"
 #include "../InstallConfiguration.hpp"
+#include "TcpListener.hpp"
 
 
 
@@ -47,13 +48,14 @@ void UdpBroadcaster::broadcastDiscoveryBeacon()
 QByteArray UdpBroadcaster::createBeacon(bool aIsDiscovery)
 {
 	auto ic = mComponents.get<InstallConfiguration>();
+	auto listener = mComponents.get<TcpListener>();
 	QByteArray beacon;
 	beacon.append("Deskemes");
 	beacon.append('\0');  // version, MSB
 	beacon.append('\1');  // version, LSB
 	Utils::writeBE16Lstring(beacon, ic->publicID());
-	// TODO: Utils::writeBE16(beacon, listener->port());
-	Utils::writeBE16(beacon, 49152);  // Dummy TCP Listener port
+	Utils::writeBE16(beacon, listener->listeningPort());
+	beacon.append(aIsDiscovery ? '\1' : '\0');
 	return beacon;
 }
 
@@ -68,7 +70,7 @@ void UdpBroadcaster::broadcastBeacon()
 	const auto & beacon = (mNumDiscoveryBroadcasts > 0) ? beaconDiscovery : beaconRegular;
 
 	// Broadcast the beacon on all interfaces / addresses:
-	for (const auto addr: QNetworkInterface::allAddresses())
+	for (const auto & addr: QNetworkInterface::allAddresses())
 	{
 		QUdpSocket socket;
 		socket.bind(addr);

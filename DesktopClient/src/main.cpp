@@ -16,6 +16,7 @@
 #include "DB/Database.hpp"
 #include "UI/WndDevices.hpp"
 #include "Comm/DetectedDevices.hpp"
+#include "Comm/TcpListener.hpp"
 #include "Comm/UdpBroadcaster.hpp"
 
 
@@ -110,7 +111,9 @@ int main(int argc, char *argv[])
 		auto mainDB      = cc.addNew<Database>(cc);
 		auto devs        = cc.addNew<Devices>(cc);
 		auto broadcaster = cc.addNew<UdpBroadcaster>(cc);
+		auto listener    = cc.addNew<TcpListener>();
 
+		listener->start();
 		broadcaster->start();
 
 		// Connect the main objects together:

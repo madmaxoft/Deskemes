@@ -31,6 +31,7 @@ public:
 		ckDatabase,
 		ckDevices,
 		ckUdpBroadcaster,
+		ckTcpListener,
 	};
 
 

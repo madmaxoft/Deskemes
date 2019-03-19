@@ -147,6 +147,7 @@ set(SOURCES
 	# The Communication-related sources:
 	src/Comm/AdbCommunicator.cpp
 	src/Comm/DetectedDevices.cpp
+	src/Comm/TcpListener.cpp
 	src/Comm/UdpBroadcaster.cpp
 	src/Comm/UsbDeviceEnumerator.cpp
 
@@ -180,6 +181,7 @@ set(HEADERS
 	# The Communication-related headers:
 	src/Comm/AdbCommunicator.hpp
 	src/Comm/DetectedDevices.hpp
+	src/Comm/TcpListener.hpp
 	src/Comm/UdpBroadcaster.hpp
 	src/Comm/UsbDeviceEnumerator.hpp
 

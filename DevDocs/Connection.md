@@ -62,7 +62,7 @@
   Request:
 
 | Data      | Type    | Notes                                                |
-|-----------|---------|------------------------------------------------------|
+| --------- | ------- | ---------------------------------------------------- |
 | MsgType   | 0x00    | This is a request                                    |
 | RequestID | uint8   | The ID of the request                                |
 | ReqType   | 4 bytes | The type of the request (what data is it requesting) |
@@ -72,7 +72,7 @@
   Response:
 
 | Data      | Type   | Notes                                          |
-|-----------|--------|------------------------------------------------|
+| --------- | ------ | ---------------------------------------------- |
 | MsgType   | 0x01   | This is a response                             |
 | RequestID | uint8  | The ID of the request this response belongs to |
 | MsgLen    | uint16 | The length of the response data (MSB first)    |
@@ -81,12 +81,19 @@
   Error:
 
 | Data      | Type   | Notes                                            |
-|-----------|--------|--------------------------------------------------|
+| --------- | ------ | ------------------------------------------------ |
 | MsgType   | 0x02   | This is an error report                          |
 | RequestID | uint8  | The ID of the request this response belongs to   |
 | ErrorCode | uint16 | The numerical error code (list below; MSB first) |
 | MsgLen    | uint16 | The length of the error message (MSB first)      |
 | MsgData   | bytes  | The error message                                |
+
+  Special - TLS start:
+
+| Data      | Type   | Notes                         |
+| --------- | ------ | ----------------------------- |
+| MsgType   | 0x03   | Everything from now on is TLS |
+
 
 
 The numbers are sent big-endian - MSB first. The ReqType is a 4-byte identifier of what data is requested (list of request types is down below). A request can have an additional data. A response has a similar format but doesn't repeat the ReqType. MsgData length for each packet is capped at 64 KiB; the assumption is that this is enough for all messages; no particular fragmentation scheme is specified. If a specified ReqType is not supported by the receiver, it sends an Error response with the error code `ERR_UNSUPPORTED_REQTYPE`.
@@ -152,50 +159,12 @@ The numbers are sent big-endian - MSB first. The ReqType is a 4-byte identifier 
 
 ### Need pairing UI: `pair`
 
-  The sender signals by this request that it doesn't have a valid pairing to the receiver, and they should both present the pairing UI to the user. After the response is sent, the pairing UI is shown to the user. Any MsgData sent in the response is ignored. If an Error (`ERR_DO_NOT_PAIR`) is sent instead, the UI is not to be shown at all (the remote is not interested in pairing just yet).
+  The sender signals by this request that it doesn't have a valid pairing to the receiver, and they should both present the pairing UI to the user. After the response is sent, the pairing UI is shown to the user. Any MsgData sent in the response is ignored. If an Error (`ERR_NOT_YET`) is sent instead, the UI is not to be shown at all (the remote is not interested in pairing just yet).
 
 
 ### Start TLS: `stls`
 
-  The sender requests that TLS be started on this connection. The receiver simply acknowledges with an empty Response and may continue unencrypted communication. Only after the Start TLS request is sent by both parties, the TLS is started as soon as the second Response is received. After sending the `stls` request, the sender can no longer send any Requests, they can only send Responses and Errors.
-
-  The following diagram illustrates the flow:
-```
-  A                                                  B
-  |                                                  |
-  | Request "stls"                                   |
-  |------------------------------------------------->|
-  |                                                  |
-  | -----------------------------------------------| |
-  |-| A can no longer send requests. B still can.  |-|
-  | |----------------------------------------------| |
-  |                                                  |
-  |                                   Request "xfnm" |
-  |<-------------------------------------------------|
-  |                                                  |
-  |                                  Response "stls" |
-  |<-------------------------------------------------|
-  |                                                  |
-  | Response "xfnm"                                  |
-  |------------------------------------------------->|
-  |                                                  |
-  |                                      Request ... |
-  |<-------------------------------------------------|
-  |                                                  |
-  | Response ...                                     |
-  |------------------------------------------------->|
-  |                                                  |
-  |                                   Request "stls" |
-  |<-------------------------------------------------|
-  |                                                  |
-  | Response "stls"                                  |
-  |------------------------------------------------->|
-  |                                                  |
-  | -----------------------------------------------| |
-  |-| TLS is started.                              |-|
-  | |----------------------------------------------| |
-```
-  In the diagram, note that the `xfnm` request is sent between the `stls` request and response; this is supported. Then B sends more requests and receives responses, before it decides to start TLS as well. TLS handshake is started once B receives the `stls` response from A.
+  The sender requests that TLS be started on this connection. After the success Response from the receiver, each peer sends a special packet "TLS start" (a single 0x03 byte where ReqType normally is) to indicate where the TLS communication starts (as opposed to leftover Request / Response / Error messages). While waiting for a Response to `stls`, Requests may still be sent, but their Responses may get lost because the receiver could already have sent the 0x03 byte and they cannot respond once they do. If the receiver doesn't wish to start TLS just yet, they can instead respond with an Error message (`ERR_NOT_YET`) and normal protocol flow is restored.
 
 
 ## Encrypted muxing
@@ -299,13 +268,13 @@ The numbers are sent big-endian - MSB first. The ReqType is a 4-byte identifier 
 
   The following table lists the error codes in both the point-to-point request-response protocol and the Channel 0 protocol. Any other code may be used as well; the following are predefined by the protocol and well understood by both the desktop client and phone app.
 
-| ErrorCode | Name                    | Meaning                                                               |
-| ---------:| ----------------------- | --------------------------------------------------------------------- |
-|         1 | ERR_UNSUPPORTED_REQTYPE | The ReqType is not supported                                          |
-|         2 | ERR_NO_SUCH_SERVICE     | The requested service is not known                                    |
-|         3 | ERR_NO_CHANNEL_ID       | All the Channel IDs are used, cannot allocate a new one               |
-|         4 | ERR_SERVICE_INIT_FAILED | The service failed to initialize. Channel not allocated               |
-|         5 | ERR_NO_PERMISSION       | The phone app needs an (Android) permission first for this operation  |
-|         6 | ERR_DO_NOT_PAIR         | The sender doesn't want to pair yet (used when broadcast-discovering) |
+| ErrorCode | Name                    | Meaning                                                              |
+| ---------:| ----------------------- | -------------------------------------------------------------------- |
+|         1 | ERR_UNSUPPORTED_REQTYPE | The ReqType is not supported                                         |
+|         2 | ERR_NO_SUCH_SERVICE     | The requested service is not known                                   |
+|         3 | ERR_NO_CHANNEL_ID       | All the Channel IDs are used, cannot allocate a new one              |
+|         4 | ERR_SERVICE_INIT_FAILED | The service failed to initialize. Channel not allocated              |
+|         5 | ERR_NO_PERMISSION       | The phone app needs an (Android) permission first for this operation |
+|         6 | ERR_NOT_YET             | The sender doesn't want to TLS or pair yet                           |
 
   Errors that are violations of the cleartext point-to-point protocol (such as too short PublicID) or have security implications (`stls` Request without a prior `xpbk` Request) should be handled by closing the entire connection. Errors in the TLS Muxing phase should be preferably handled by returning an error code, rather than closing the entire connection.

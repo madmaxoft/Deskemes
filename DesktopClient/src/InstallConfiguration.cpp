@@ -100,15 +100,15 @@ bool InstallConfiguration::isDataPathSuitable(const QString & aFolder)
 
 void InstallConfiguration::loadOrGeneratePublicID()
 {
-	auto id = Settings::loadValue("InstallConfiguration", "PublicID", {});
-	if (id.isValid())
+	mPublicID = Settings::loadValue("InstallConfiguration", "PublicID", {}).toByteArray();
+	if (mPublicID.size() >= 16)
 	{
 		return;
 	}
 
 	// Generate and store a new PublicID:
 	// Use a crypto hash of current time, network addresses and username-related paths to provide at least some entropy:
-	qDebug() << "Public ID not set, creating a new one";
+	qDebug() << "Public ID not set or invalid, creating a new one";
 	QCryptographicHash hash(QCryptographicHash::Sha512);
 	auto time = QDateTime::currentMSecsSinceEpoch();
 	hash.addData(reinterpret_cast<const char *>(&time), sizeof(time));

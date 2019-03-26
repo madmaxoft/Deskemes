@@ -66,7 +66,7 @@ QByteArray UdpBroadcaster::createBeacon(bool aIsDiscovery)
 void UdpBroadcaster::broadcastBeacon()
 {
 	static const auto beaconRegular = createBeacon(false);
-	static const auto beaconDiscovery = createBeacon(false);
+	static const auto beaconDiscovery = createBeacon(true);
 	const auto & beacon = (mNumDiscoveryBroadcasts > 0) ? beaconDiscovery : beaconRegular;
 
 	// Broadcast the beacon on all interfaces / addresses:

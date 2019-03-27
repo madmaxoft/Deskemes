@@ -111,7 +111,7 @@ int main(int argc, char *argv[])
 		auto mainDB      = cc.addNew<Database>(cc);
 		auto devs        = cc.addNew<Devices>(cc);
 		auto broadcaster = cc.addNew<UdpBroadcaster>(cc);
-		auto listener    = cc.addNew<TcpListener>();
+		auto listener    = cc.addNew<TcpListener>(cc);
 
 		listener->start();
 		broadcaster->start();

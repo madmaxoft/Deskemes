@@ -8,6 +8,7 @@
 #include <QDateTime>
 #include <QNetworkInterface>
 #include "Settings.hpp"
+#include "Utils.hpp"
 
 
 
@@ -35,6 +36,24 @@ InstallConfiguration::InstallConfiguration():
 void InstallConfiguration::loadFromSettings()
 {
 	loadOrGeneratePublicID();
+	mFriendlyName = Settings::loadValue("InstallConfiguration", "FriendlyName", "").toString();
+	if (mFriendlyName.isEmpty())
+	{
+		auto hex = QString::fromUtf8(Utils::toHex(mPublicID.left(4)));
+		mFriendlyName = QString::fromUtf8("Deskemes_%1").arg(hex);
+		setFriendlyName(mFriendlyName);
+	}
+	mAvatar = Settings::loadValue("InstallConfiguration", "Avatar", {});
+}
+
+
+
+
+
+void InstallConfiguration::setFriendlyName(const QString & aFriendlyName)
+{
+	mFriendlyName = aFriendlyName;
+	Settings::saveValue("InstallConfiguration", "FriendlyName", mFriendlyName);
 }
 
 

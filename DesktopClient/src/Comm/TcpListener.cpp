@@ -1,16 +1,19 @@
 #include "TcpListener.hpp"
 #include <cassert>
+#include "Connection.hpp"
 
 
 
 
 
-TcpListener::TcpListener(QObject * aParent):
-	Super(aParent)
+TcpListener::TcpListener(ComponentCollection & aComponents, QObject * aParent):
+	Super(aParent),
+	mComponents(aComponents)
 {
 	mThread.setObjectName("TcpListener");
 	mThread.start();
-	mServer.moveToThread(&mThread);
+	// TODO: Finish threading. Right now it doesn't work with mServer.listen() called in another thread.
+	// mServer.moveToThread(&mThread);
 	connect(&mServer, &QTcpServer::newConnection, this, &TcpListener::newConnection);
 }
 
@@ -35,6 +38,9 @@ TcpListener::~TcpListener()
 void TcpListener::start()
 {
 	assert(!mServer.isListening());  // Not started yet
+	// TODO: Finish threading. Right now it doesn't work with mServer.listen() called in another thread.
+	// QTcpServer.listen() is not invokable
+	// QMetaObject::invokeMethod(&mServer, "listen", Qt::BlockingQueuedConnection);
 	mServer.listen();
 }
 
@@ -63,5 +69,11 @@ void TcpListener::newConnection()
 	{
 		return;
 	}
-	// TODO
+	auto conn = std::make_shared<Connection>(
+		mComponents,
+		reinterpret_cast<QIODevice *>(tcpConn),
+		Connection::tkTcp,
+		tr("TCP")
+	);
+	mConnections.push_back(conn);
 }

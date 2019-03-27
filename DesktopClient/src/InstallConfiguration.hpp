@@ -2,6 +2,7 @@
 
 #include <QString>
 #include "ComponentCollection.hpp"
+#include "Optional.hpp"
 
 
 
@@ -34,9 +35,13 @@ public:
 	This is only used during app initialization. */
 	void loadFromSettings();
 
+	/** Stores the specified friendly name. */
+	void setFriendlyName(const QString & aFriendlyName);
 
 	// Simple getters:
 	const QByteArray & publicID() const { return mPublicID; }
+	const QString & friendlyName() const { return mFriendlyName; }
+	const Optional<QByteArray> & avatar() const { return mAvatar; }
 
 
 protected:
@@ -48,6 +53,12 @@ protected:
 	/** The public ID of the Deskemes instance, as read from the Settings, and used as identification
 	for communicating with the devices. */
 	QByteArray mPublicID;
+
+	/** The user-given name of this Deskemes instance, to be shown by devices when pairing. */
+	QString mFriendlyName;
+
+	/** The user-given avatar of this Deskemes instance, to be shown by devices when pairing. */
+	Optional<QByteArray> mAvatar;
 
 
 	/** Returns the folder to use for m_DataPath.

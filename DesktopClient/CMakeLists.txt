@@ -146,7 +146,9 @@ add_definitions(-DQT_MESSAGELOGCONTEXT)
 set(SOURCES
 	# The Communication-related sources:
 	src/Comm/AdbCommunicator.cpp
+	src/Comm/Connection.cpp
 	src/Comm/DetectedDevices.cpp
+	src/Comm/PhaseHandlers.cpp
 	src/Comm/TcpListener.cpp
 	src/Comm/UdpBroadcaster.cpp
 	src/Comm/UsbDeviceEnumerator.cpp
@@ -180,7 +182,9 @@ set(SOURCES
 set(HEADERS
 	# The Communication-related headers:
 	src/Comm/AdbCommunicator.hpp
+	src/Comm/Connection.hpp
 	src/Comm/DetectedDevices.hpp
+	src/Comm/PhaseHandlers.hpp
 	src/Comm/TcpListener.hpp
 	src/Comm/UdpBroadcaster.hpp
 	src/Comm/UsbDeviceEnumerator.hpp
@@ -207,6 +211,7 @@ set(HEADERS
 	src/Devices.hpp
 	src/Exception.hpp
 	src/InstallConfiguration.hpp
+	src/Optional.hpp
 	src/Settings.hpp
 	src/Utils.hpp
 )

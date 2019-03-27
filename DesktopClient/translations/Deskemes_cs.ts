@@ -171,6 +171,13 @@
     </message>
 </context>
 <context>
+    <name>TcpListener</name>
+    <message>
+        <source>TCP</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
     <name>WgtDevice</name>
     <message>
         <source>Contacts</source>

@@ -1,8 +1,16 @@
 #pragma once
 
+#include <memory>
 #include <QThread>
 #include <QTcpServer>
 #include "../ComponentCollection.hpp"
+
+
+
+
+
+// fwd:
+class Connection;
 
 
 
@@ -28,7 +36,7 @@ public:
 	};
 
 
-	explicit TcpListener(QObject * aParent = nullptr);
+	explicit TcpListener(ComponentCollection & aComponents, QObject * aParent = nullptr);
 
 	virtual ~TcpListener() override;
 
@@ -42,11 +50,17 @@ public:
 
 protected:
 
+	/** The components of the entire app. */
+	ComponentCollection & mComponents;
+
 	/** The thread on which the UDP socket lives. */
 	QThread mThread;
 
 	/** The TCP server used for listening for connections. */
 	QTcpServer mServer;
+
+	/** All current TCP connections. */
+	std::vector<std::shared_ptr<Connection>> mConnections;
 
 
 

@@ -10,25 +10,7 @@ TcpListener::TcpListener(ComponentCollection & aComponents, QObject * aParent):
 	Super(aParent),
 	mComponents(aComponents)
 {
-	mThread.setObjectName("TcpListener");
-	mThread.start();
-	// TODO: Finish threading. Right now it doesn't work with mServer.listen() called in another thread.
-	// mServer.moveToThread(&mThread);
 	connect(&mServer, &QTcpServer::newConnection, this, &TcpListener::newConnection);
-}
-
-
-
-
-
-TcpListener::~TcpListener()
-{
-	mServer.close();
-	mThread.quit();
-	if (!mThread.wait(1000))
-	{
-		qWarning() << "Failed to stop the TcpListener thread, aborting forcefully.";
-	}
 }
 
 
@@ -38,9 +20,6 @@ TcpListener::~TcpListener()
 void TcpListener::start()
 {
 	assert(!mServer.isListening());  // Not started yet
-	// TODO: Finish threading. Right now it doesn't work with mServer.listen() called in another thread.
-	// QTcpServer.listen() is not invokable
-	// QMetaObject::invokeMethod(&mServer, "listen", Qt::BlockingQueuedConnection);
 	mServer.listen();
 }
 
@@ -62,6 +41,16 @@ quint16 TcpListener::listeningPort()
 
 
 
+std::vector<std::shared_ptr<Connection> > TcpListener::connections() const
+{
+	QMutexLocker lock(&mMtxConnections);
+	return mConnections;
+}
+
+
+
+
+
 void TcpListener::newConnection()
 {
 	auto tcpConn = mServer.nextPendingConnection();
@@ -75,5 +64,7 @@ void TcpListener::newConnection()
 		Connection::tkTcp,
 		tr("TCP")
 	);
+
+	QMutexLocker lock(&mMtxConnections);
 	mConnections.push_back(conn);
 }

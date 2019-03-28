@@ -29,9 +29,9 @@ public:
 	/** The columns provided by this model. */
 	enum
 	{
-		colDevice,      ///< The device's Name, or EnumeratorID if name not available
-		colStatus,      ///< The status of the device
-		colScreenshot,  ///< Screeshot of the device, if available
+		colDevice,  ///< The device's Name, or EnumeratorID if name not available
+		colStatus,  ///< The status of the device
+		colAvatar,  ///< An avatar representing the device
 
 		colMax,
 	};
@@ -44,6 +44,7 @@ public:
 		enum Status
 		{
 			dsOnline,        ///< The device is working properly
+			dsFirstTime,     ///< The device hasn't been paired yet (just now discovered, have no pubkey)
 			dsUnauthorized,  ///< The device requires on-device authorization before it can be accessed
 			dsOffline,       ///< The device is known but unavailable (ADB bootloader, ...)
 		};
@@ -53,12 +54,12 @@ public:
 		// Simple getters:
 		const QByteArray & enumeratorDeviceID() const { return mEnumeratorDeviceID; }
 		Status status() const { return mStatus; }
-		const QImage & lastScreenshot() const { return mLastScreenshot; }
+		const QImage & avatar() const { return mAvatar; }
 		const QString & name() const { return mName; }
 
 		// Simple setters:
 		void setStatus(Status aStatus) { mStatus = aStatus; }
-		void setLastScreenshot(const QImage & aScreenshot) { mLastScreenshot = aScreenshot; }
+		void setAvatar(const QImage & aAvatar) { mAvatar = aAvatar; }
 		void setName(const QString & aName) { mName = aName; }
 
 
@@ -70,11 +71,11 @@ public:
 		/** Current status of the device. */
 		Status mStatus;
 
-		/** The last screenshot taken of the device. */
-		QImage mLastScreenshot;
-
 		/** The name of the device (as set in the app), if known. */
 		QString mName;
+
+		/** The avatar representing the device. */
+		QImage mAvatar;
 	};
 
 	using DevicePtr = std::shared_ptr<Device>;
@@ -102,9 +103,17 @@ public:
 	If such a device doesn't exist, creates it. */
 	void setDeviceStatus(const QByteArray & aEnumeratorDeviceID, Device::Status aStatus);
 
-	/** Updates the last screenshot for the specified device.
+	/** Updates the specified device's name.
 	Ignored if such a device doesn't exist. */
-	void setDeviceScreenshot(const QByteArray & aEnumeratorDeviceID, const QImage & aScreenshot);
+	void setDeviceName(const QByteArray & aEnumeratorDeviceID, const QString & aName);
+
+	/** Updates the avatar for the specified device.
+	Ignored if such a device doesn't exist. */
+	void setDeviceAvatar(const QByteArray & aEnumeratorDeviceID, const QImage & aAvatar);
+
+	/** Updates the avatar for the specified device, based on the binary avatar data (JPG or PNG).
+	Ignored if such a device doesn't exist, or if the avatar data cannot be decoded into an image. */
+	void setDeviceAvatar(const QByteArray & aEnumeratorDeviceID, const QByteArray & aAvatarImgData);
 
 	/** Updates the entire device list.
 	All items in mDevices that are not in aNewDeviceList are removed.
@@ -137,16 +146,31 @@ protected:
 
 
 	/** The actual implementation of addDevice, guaranteed to be invoked in this object's thread. */
-	Q_INVOKABLE void invAddDevice(const QByteArray & aEnumeratorDeviceID, Device::Status aStatus);
+	Q_INVOKABLE void invAddDevice(
+		const QByteArray & aEnumeratorDeviceID,
+		DetectedDevices::Device::Status aStatus
+	);
 
 	/** The actual implementation of delDevice, guaranteed to be invoked in this object's thread. */
 	Q_INVOKABLE void invDelDevice(const QByteArray & aEnumeratorDeviceID);
 
 	/** The actual implementation of setDeviceStatus, guaranteed to be invoked in this object's thread. */
-	Q_INVOKABLE void invSetDeviceStatus(const QByteArray & aEnumeratorDeviceID, Device::Status aStatus);
+	Q_INVOKABLE void invSetDeviceStatus(
+		const QByteArray & aEnumeratorDeviceID,
+		DetectedDevices::Device::Status aStatus
+	);
 
-	/** The actual implementation of setDeviceScreenshot, guaranteed to be invoked in this object's thread. */
-	Q_INVOKABLE void invSetDeviceScreenshot(const QByteArray & aEnumeratorDeviceID, const QImage & aScreenshot);
+	/** The actual implementation of setDeviceName, guaranteed to be invoked in this object's thread. */
+	Q_INVOKABLE void invSetDeviceName(
+		const QByteArray & aEnumeratorDeviceID,
+		const QString & aName
+	);
+
+	/** The actual implementation of setDeviceAvatar, guaranteed to be invoked in this object's thread. */
+	Q_INVOKABLE void invSetDeviceAvatar(
+		const QByteArray & aEnumeratorDeviceID,
+		const QImage & aAvatar
+	);
 
 	/** The actual implementation of updateDeviceList, guaranteed to be invoked in this object's thread. */
 	Q_INVOKABLE void invUpdateDeviceList(const DetectedDevices::DeviceStatusList & aNewDeviceList);

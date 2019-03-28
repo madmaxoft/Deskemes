@@ -15,7 +15,7 @@ NewDeviceWizard::NewDeviceWizard(ComponentCollection & aComponents, QWidget * aP
 	setWindowTitle(tr("Deskemes: Add new device"));
 	setWizardStyle(QWizard::ModernStyle);
 	setPage(pgConnectionType, new PgConnectionType(this));
-	setPage(pgTcpDeviceList,  new PgTcpDeviceList(this));
+	setPage(pgTcpDeviceList,  new PgTcpDeviceList(mComponents, this));
 	setPage(pgUsbDeviceList,  new PgUsbDeviceList(mComponents, this));
 	setStartId(pgConnectionType);
 }

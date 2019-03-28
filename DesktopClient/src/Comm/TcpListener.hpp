@@ -12,6 +12,7 @@
 
 // fwd:
 class Connection;
+class DetectedDevices;
 
 
 
@@ -49,6 +50,11 @@ public:
 	/** Returns a (shallow) copy of all the connections. */
 	std::vector<std::shared_ptr<Connection>> connections() const;
 
+	/** Starts device detection.
+	Returns a new DetectedDevices instance that is the destination where the detected devices are stored.
+	The detection will terminate once the returned object is destroyed. */
+	std::shared_ptr<DetectedDevices> detectDevices();
+
 
 protected:
 
@@ -65,6 +71,18 @@ protected:
 	/** The mutex protecting mConnections against multithreaded access. */
 	mutable QMutex mMtxConnections;
 
+	/** All device detection requests that have been started by detectDevices().
+	All newly found devices (connections) are reported to all items here.
+	Protected against multithreaded access by mMtxDetections. */
+	std::vector<std::weak_ptr<DetectedDevices>> mDetections;
+
+	/** The mutex protecting mDetections against multithreaded access. */
+	mutable QMutex mMtxDetections;
+
+
+	/** Updates the details of the detected device represented by the specified connection in
+	the specified detection. */
+	void updateDetectedDevice(DetectedDevices & aDetection, Connection & aConnection);
 
 
 signals:
@@ -78,4 +96,11 @@ protected slots:
 	/** Creates a new Connection object for the new connection from the TCP server.
 	Emitted by mServer when a new connection is requested. */
 	void newConnection();
+
+	/** Removes the specified detection from mDetections.
+	Called by the detection itself when it is being destroyed. */
+	void removeDetection(QObject * aDetection);
+
+	/** Updates the sender connection's device's details in all current detections. */
+	void connUpdateDetails();
 };

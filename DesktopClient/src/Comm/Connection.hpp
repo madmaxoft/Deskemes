@@ -69,8 +69,8 @@ public:
 	State state() const { return mState; }
 
 	// Simple setters:
-	void setFriendlyName(const QString & aFriendlyName) { mFriendlyName = aFriendlyName; }
-	void setAvatar(const QByteArray & aAvatar) { mAvatar = aAvatar; }
+	void setFriendlyName(const QString & aFriendlyName) { mFriendlyName = aFriendlyName; emit receivedFriendlyName(); }
+	void setAvatar(const QByteArray & aAvatar) { mAvatar = aAvatar; emit receivedAvatar(); }
 
 	/** Terminates the connection forcefully. */
 	void terminate();
@@ -136,6 +136,10 @@ protected:
 	If the pair is known, sets state to csNoNeedPairing and emits the knownPairing() signal. */
 	void checkRemotePublicKeyAndID();
 
+	/** Sets the new state.
+	Emits the stateChanged signal. */
+	void setState(State aNewState);
+
 
 signals:
 
@@ -155,6 +159,21 @@ signals:
 	The remote may still need to do pairing; if so, the requestingPairing() will be signalled later. */
 	void knownPairing();
 
+	/** Emitted when the remote public ID is received. */
+	void receivedPublicID();
+
+	/** Emitted when the remote public key is received. */
+	void receivedPublicKey();
+
+	/** Emitted when the friendly name is received. */
+	void receivedFriendlyName();
+
+	/** Emitted when the avatar is received. */
+	void receivedAvatar();
+
+	/** Emitted after the state has changed. */
+	void stateChanged(State aNewState);
+
 
 public slots:
 
@@ -164,4 +183,7 @@ private slots:
 	/** The mIO has data available for reading.
 	Reads the data and pushes it into the current phase. */
 	void ioReadyRead();
+
+	/** The mIO is closing. */
+	void ioClosing();
 };

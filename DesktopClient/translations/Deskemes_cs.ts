@@ -73,11 +73,15 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Screenshot</source>
+        <source>Device</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Device</source>
+        <source>Not paired</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Avatar</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -135,14 +139,6 @@
     </message>
     <message>
         <source>Select your device when it appears in the list:</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>DeviceID</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Details</source>
         <translation type="unfinished"></translation>
     </message>
 </context>

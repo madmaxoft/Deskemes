@@ -11,8 +11,8 @@
 
 
 /** Broadcasts the UDP beacons so that devices on the local network know about this Deskemes instance.
-Normally broadcasts a non-discovery beacon; upon request it broadcasts several discovery beacons before returning
-back to broadcasting non-discovery ones. */
+Normally broadcasts a non-discovery beacon; after startDiscovery() is called it broadcasts discovery beacons
+until endDiscovery() is called. */
 class UdpBroadcaster:
 	public QObject,
 	public ComponentCollection::Component<ComponentCollection::ckUdpBroadcaster>
@@ -40,8 +40,11 @@ public:
 		quint16 aAltPort = ALTERNATE_BROADCASTER_PORT
 	);
 
-	/** Turns the Discovery flag on for several upcoming broadcasts. */
-	void broadcastDiscoveryBeacon();
+	/** Turns the Discovery flag on. */
+	void startDiscovery();
+
+	/** Turns the Discovery flag off. */
+	void endDiscovery();
 
 
 protected:
@@ -58,9 +61,9 @@ protected:
 	/** The secondary port on which the broadcasts should be made. 0 if not used. */
 	quint16 mAltPort;
 
-	/** Number of times that a discovery beacon should be sent instead of a regular beacon.
-	While positive, the periodic beacon is broadcast with its Discovery flag on, and this number is decreased. */
-	std::atomic<int> mNumDiscoveryBroadcasts;
+	/** True if discovery beacons should be sent instead of regular beacons.
+	Manipulated by startDiscovery() and endDiscovery(). */
+	bool mIsDiscovery;
 
 
 	/** Returns the data that should be sent as the beacon.

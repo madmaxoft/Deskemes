@@ -2,11 +2,14 @@
 
 #include <memory>
 #include <QWizard>
+#include "../../Comm/DetectedDevices.hpp"
+
 
 
 
 
 // fwd:
+class ComponentCollection;
 namespace Ui
 {
 	class PgTcpDeviceList;
@@ -27,7 +30,7 @@ class PgTcpDeviceList:
 
 public:
 
-	explicit PgTcpDeviceList(QWidget * aParent);
+	explicit PgTcpDeviceList(ComponentCollection & aComponents, QWidget * aParent);
 
 	virtual ~PgTcpDeviceList() override;
 
@@ -37,6 +40,12 @@ public:
 
 private:
 
+	/** The components of the entire app. */
+	ComponentCollection & mComponents;
+
 	/** The Qt-managed UI. */
 	std::unique_ptr<Ui::PgTcpDeviceList> mUI;
+
+	/** The detected devices list, model for the UI. */
+	std::shared_ptr<DetectedDevices> mDetectedDevices;
 };

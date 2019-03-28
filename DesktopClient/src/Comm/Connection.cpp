@@ -21,7 +21,8 @@ Connection::Connection(
 	mPhaseHandler(std::make_unique<PhaseHandlerCleartext>(aComponents, *this)),
 	mState(csInitial)
 {
-	connect(aIO, &QIODevice::readyRead, this, &Connection::ioReadyRead);
+	connect(aIO, &QIODevice::readyRead,    this, &Connection::ioReadyRead);
+	connect(aIO, &QIODevice::aboutToClose, this, &Connection::ioClosing);
 
 	// If there's data already on the connection, process it:
 	if (aIO->waitForReadyRead(1))
@@ -55,7 +56,7 @@ void Connection::write(const QByteArray & aData)
 void Connection::requestPairing()
 {
 	assert(mState == csInitial);
-	mState = csRequestedPairing;
+	setState(csRequestedPairing);
 	emit requestingPairing();
 }
 
@@ -69,7 +70,7 @@ std::unique_ptr<PhaseHandler> Connection::setPhaseHandler(
 )
 {
 	std::swap(aNewHandler, mPhaseHandler);
-	mState = aNewState;
+	setState(aNewState);
 	return std::move(aNewHandler);
 }
 
@@ -80,6 +81,7 @@ std::unique_ptr<PhaseHandler> Connection::setPhaseHandler(
 void Connection::setRemotePublicID(const QByteArray & aPublicID)
 {
 	mRemotePublicID = aPublicID;
+	emit receivedPublicID();
 	checkRemotePublicKeyAndID();
 }
 
@@ -90,6 +92,7 @@ void Connection::setRemotePublicID(const QByteArray & aPublicID)
 void Connection::setRemotePublicKey(const QByteArray & aPubKeyData)
 {
 	mRemotePublicKeyData = aPubKeyData;
+	emit receivedPublicKey();
 	checkRemotePublicKeyAndID();
 }
 
@@ -99,9 +102,25 @@ void Connection::setRemotePublicKey(const QByteArray & aPubKeyData)
 
 void Connection::checkRemotePublicKeyAndID()
 {
+	if (!mRemotePublicID.isPresent() || !mRemotePublicKeyData.isPresent())
+	{
+		// ID or key is still missing, try again later
+		return;
+	}
+
 	// TODO: Check the pairing
-	mState = csNeedPairing;
+	setState(csNeedPairing);
 	emit unknownPairing();
+}
+
+
+
+
+
+void Connection::setState(Connection::State aNewState)
+{
+	mState = aNewState;
+	emit stateChanged(aNewState);
 }
 
 
@@ -119,4 +138,13 @@ void Connection::ioReadyRead()
 		}
 		mPhaseHandler->processIncomingData(data);
 	}
+}
+
+
+
+
+
+void Connection::ioClosing()
+{
+	emit disconnected();
 }

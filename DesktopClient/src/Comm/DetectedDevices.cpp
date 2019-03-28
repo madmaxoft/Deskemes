@@ -77,14 +77,43 @@ void DetectedDevices::setDeviceStatus(const QByteArray & aEnumeratorDeviceID, De
 
 
 
-void DetectedDevices::setDeviceScreenshot(const QByteArray & aEnumeratorDeviceID, const QImage & aScreenshot)
+void DetectedDevices::setDeviceName(const QByteArray & aEnumeratorDeviceID, const QString & aName)
 {
 	QMetaObject::invokeMethod(
-		this, "invSetDeviceScreenshot",
+		this, "invSetDeviceName",
 		Qt::AutoConnection,
 		Q_ARG(const QByteArray &, aEnumeratorDeviceID),
-		Q_ARG(const QImage &, aScreenshot)
+		Q_ARG(const QString &, aName)
 	);
+}
+
+
+
+
+
+void DetectedDevices::setDeviceAvatar(const QByteArray & aEnumeratorDeviceID, const QImage & aAvatar)
+{
+	QMetaObject::invokeMethod(
+		this, "invSetDeviceAvatar",
+		Qt::AutoConnection,
+		Q_ARG(const QByteArray &, aEnumeratorDeviceID),
+		Q_ARG(const QImage &, aAvatar)
+	);
+}
+
+
+
+
+
+void DetectedDevices::setDeviceAvatar(const QByteArray & aEnumeratorDeviceID, const QByteArray & aAvatarImgData)
+{
+	auto avatar = QImage::fromData(aAvatarImgData);
+	if (avatar.isNull())
+	{
+		qDebug() << "Avatar data cannot be decoded into an image for device " << aEnumeratorDeviceID;
+		return;
+	}
+	setDeviceAvatar(aEnumeratorDeviceID, avatar);
 }
 
 
@@ -165,12 +194,21 @@ QVariant DetectedDevices::data(const QModelIndex & aIndex, int aRole) const
 					switch (device->status())
 					{
 						case Device::dsOnline:       return tr("Online");
+						case Device::dsFirstTime:    return tr("Not paired");
 						case Device::dsUnauthorized: return tr("Authorization needed");
 						case Device::dsOffline:      return tr("Offline");
 					}
 					return {};
 				}
-				case colScreenshot: return device->lastScreenshot();
+			}
+			break;
+		}		// case Qt::DisplayRole
+
+		case Qt::DecorationRole:
+		{
+			switch (aIndex.column())
+			{
+				case colAvatar: return device->avatar();
 			}
 			break;
 		}
@@ -190,9 +228,9 @@ QVariant DetectedDevices::headerData(int aSection, Qt::Orientation aOrientation,
 	}
 	switch (aSection)
 	{
-		case colDevice:      return tr("Device");
-		case colStatus:      return tr("Status");
-		case colScreenshot:  return tr("Screenshot");
+		case colDevice:  return tr("Device");
+		case colStatus:  return tr("Status");
+		case colAvatar:  return tr("Avatar");
 	}
 	return {};
 }
@@ -267,7 +305,7 @@ void DetectedDevices::invSetDeviceStatus(const QByteArray & aEnumeratorDeviceID,
 
 
 
-void DetectedDevices::invSetDeviceScreenshot(const QByteArray & aEnumeratorDeviceID, const QImage & aScreenshot)
+void DetectedDevices::invSetDeviceName(const QByteArray & aEnumeratorDeviceID, const QString & aName)
 {
 	int row = -1;
 	for (auto & dev: mDevices)
@@ -277,8 +315,31 @@ void DetectedDevices::invSetDeviceScreenshot(const QByteArray & aEnumeratorDevic
 		{
 			continue;
 		}
-		dev->setLastScreenshot(aScreenshot);
-		auto idx = index(row, colScreenshot);
+		dev->setName(aName);
+		auto idx = index(row, colDevice);
+		emit dataChanged(idx, idx);
+		return;
+	}
+
+	qDebug() << "Device " << aEnumeratorDeviceID << " not found";
+}
+
+
+
+
+
+void DetectedDevices::invSetDeviceAvatar(const QByteArray & aEnumeratorDeviceID, const QImage & aAvatar)
+{
+	int row = -1;
+	for (auto & dev: mDevices)
+	{
+		row += 1;
+		if (dev->enumeratorDeviceID() != aEnumeratorDeviceID)
+		{
+			continue;
+		}
+		dev->setAvatar(aAvatar);
+		auto idx = index(row, colAvatar);
 		emit dataChanged(idx, idx);
 		return;
 	}

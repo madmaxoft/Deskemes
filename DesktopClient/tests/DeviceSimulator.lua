@@ -4,10 +4,17 @@
 
 
 
+local shouldAnswerToDiscoveryOnly = true
+
+
+
+
+
 local socket = require("socket")
 local Device = {
 	mSocket = nil
 }
+local avatar
 
 
 
@@ -93,6 +100,9 @@ function Device:processCleartextMessage(aMsgType, aMsgData)
 		print("Sending my protocol identification...")
 		self:sendCleartextMessage("dsms", "Deskemes\0\1")
 		self:sendCleartextMessage("fnam", "DeviceSimulator")
+		if (avatar) then
+			self:sendCleartextMessage("avtr", avatar)
+		end
 		self:sendCleartextMessage("pubi", "DeviceSimulatorPublicID")
 		print("Sending TLS request")
 		self:sendCleartextMessage("stls")
@@ -151,7 +161,11 @@ function Device:connect(aIP, aTcpPort, aBeaconPublicID)
 
 	self.mPublicID = aBeaconPublicID
 	print("Connecting as a device to " .. aIP .. ":" .. aTcpPort .. "...")
-	self.mSocket = assert(socket.connect(aIP, aTcpPort))
+	self.mSocket = socket.connect(aIP, aTcpPort)
+	if not(self.mSocket) then
+		print("Connection failed")
+		return
+	end
 	self.mSocket:settimeout(0.1)
 	print("Connected, processing...")
 	self.mIncomingData = ""
@@ -185,41 +199,62 @@ end
 
 
 
+-- If the Simulator.png file exists, load its contents:
+local f = io.open("Simulator.png", "rb")
+if (f) then
+	avatar = f:read("*all")
+	f:close()
+end
+
+-- Main loop: Listen for a single UDP beacon and simulate a device for it:
 local udpReceiver = assert(socket.udp())
 assert(udpReceiver:setsockname("*", 24816))
-print("Waiting for UDP beacon...")
-local packet, fromIP, fromPort = udpReceiver:receivefrom()
-if not(packet) then
-	error(fromIP)
-end
-print("Received a UDP packet from " .. fromIP .. ":" .. fromPort .. ", " .. #packet .. " bytes")
+while (true) do
+	print("**** Waiting for UDP beacon...")
+	local packet, fromIP, fromPort = udpReceiver:receivefrom()
+	if not(packet) then
+		error(fromIP)
+	end
+	print("Received a UDP packet from " .. fromIP .. ":" .. fromPort .. ", " .. #packet .. " bytes")
 
--- Sanity-check the packet:
-if (#packet < 15) then
-	error("The received UDP packet is too short to be a valid Deskemes beacon")
-end
-if (string.sub(packet, 1, 8) ~= "Deskemes") then
-	error("The received UDP packet is not a valid Deskemes beacon")
-end
-local version = readBE16(packet, 9)
-if (version ~= 1) then
-	error("The received UDP packet is incorrect version (expected 1, got " .. version .. ")")
-end
-local idLen = readBE16(packet, 11)
-if (idLen < 16) then
-	error("The received PublicID is too short (expected >=16, got " .. idLen .. ")")
-end
-if (#packet < 15 + idLen) then
-	error("The received packet is too short to contain the PublicID (expected " .. 16 + idLen .. ", got " .. #packet .. " bytes)")
-end
+	-- Sanity-check the packet:
+	if (#packet < 15) then
+		error("The received UDP packet is too short to be a valid Deskemes beacon")
+	end
+	if (string.sub(packet, 1, 8) ~= "Deskemes") then
+		error("The received UDP packet is not a valid Deskemes beacon")
+	end
+	local version = readBE16(packet, 9)
+	if (version ~= 1) then
+		error("The received UDP packet is incorrect version (expected 1, got " .. version .. ")")
+	end
+	local idLen = readBE16(packet, 11)
+	if (idLen < 16) then
+		error("The received PublicID is too short (expected >=16, got " .. idLen .. ")")
+	end
+	if (#packet < 15 + idLen) then
+		error("The received packet is too short to contain the PublicID (expected " .. 16 + idLen .. ", got " .. #packet .. " bytes)")
+	end
 
--- Extract the data:
-local publicID = string.sub(packet, 13, 12 + idLen)
-local tcpPort = readBE16(packet, 13 + idLen)
-local isDiscovery = (string.byte(packet, 15 + idLen) ~= 0)
-print("TCP port: " .. tostring(tcpPort))
-print("Is discovery: " .. tostring(isDiscovery))
+	-- Extract the data:
+	local publicID = string.sub(packet, 13, 12 + idLen)
+	local tcpPort = readBE16(packet, 13 + idLen)
+	local isDiscovery = (string.byte(packet, 15 + idLen) ~= 0)
+	print("TCP port: " .. tostring(tcpPort))
+	print("Is discovery: " .. tostring(isDiscovery))
 
-Device:connect(fromIP, tcpPort, publicID)
+	if (shouldAnswerToDiscoveryOnly and not(isDiscovery)) then
+		print("Ignoring a non-discovery beacon")
+	else
+		Device:connect(fromIP, tcpPort, publicID)
+		print("Device not connected")
+	end
 
+	-- Flush packets received while blocked in the device loop:
+	assert(udpReceiver:settimeout(0.1))  -- abort if blocking for too long
+	while (packet) do
+		packet = udpReceiver:receivefrom()
+	end
+	assert(udpReceiver:settimeout())  -- blocking
+end
 print("All done")

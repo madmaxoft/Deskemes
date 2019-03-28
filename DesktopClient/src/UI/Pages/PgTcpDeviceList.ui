@@ -22,17 +22,19 @@
     </widget>
    </item>
    <item>
-    <widget class="QTableWidget" name="twDevices">
-     <column>
-      <property name="text">
-       <string>DeviceID</string>
-      </property>
-     </column>
-     <column>
-      <property name="text">
-       <string>Details</string>
-      </property>
-     </column>
+    <widget class="QTableView" name="tvDevices">
+     <property name="verticalScrollMode">
+      <enum>QAbstractItemView::ScrollPerPixel</enum>
+     </property>
+     <property name="horizontalScrollMode">
+      <enum>QAbstractItemView::ScrollPerPixel</enum>
+     </property>
+     <attribute name="horizontalHeaderHighlightSections">
+      <bool>false</bool>
+     </attribute>
+     <attribute name="verticalHeaderHighlightSections">
+      <bool>false</bool>
+     </attribute>
     </widget>
    </item>
   </layout>

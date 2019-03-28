@@ -103,5 +103,5 @@ void UsbDeviceEnumerator::updateDeviceList(
 
 void UsbDeviceEnumerator::updateDeviceLastScreenshot(const QByteArray & aDeviceID, const QImage & aScreenshot)
 {
-	mDetectedDevices.setDeviceScreenshot(aDeviceID, aScreenshot);
+	mDetectedDevices.setDeviceAvatar(aDeviceID, aScreenshot);
 }

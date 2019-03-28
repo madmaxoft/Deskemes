@@ -14,7 +14,8 @@ UdpBroadcaster::UdpBroadcaster(ComponentCollection & aComponents, QObject * aPar
 	Super(aParent),
 	mComponents(aComponents),
 	mPrimaryPort(0),
-	mAltPort(0)
+	mAltPort(0),
+	mIsDiscovery(false)
 {
 	connect(&mTimer, &QTimer::timeout, this, &UdpBroadcaster::broadcastBeacon);
 }
@@ -36,9 +37,18 @@ void UdpBroadcaster::start(quint16 aPrimaryPort, quint16 aAltPort)
 
 
 
-void UdpBroadcaster::broadcastDiscoveryBeacon()
+void UdpBroadcaster::startDiscovery()
 {
-	mNumDiscoveryBroadcasts = 10;
+	mIsDiscovery = true;
+}
+
+
+
+
+
+void UdpBroadcaster::endDiscovery()
+{
+	mIsDiscovery = false;
 }
 
 
@@ -67,7 +77,7 @@ void UdpBroadcaster::broadcastBeacon()
 {
 	static const auto beaconRegular = createBeacon(false);
 	static const auto beaconDiscovery = createBeacon(true);
-	const auto & beacon = (mNumDiscoveryBroadcasts > 0) ? beaconDiscovery : beaconRegular;
+	const auto & beacon = mIsDiscovery ? beaconDiscovery : beaconRegular;
 
 	// Broadcast the beacon on all interfaces / addresses:
 	for (const auto & addr: QNetworkInterface::allAddresses())
@@ -79,9 +89,5 @@ void UdpBroadcaster::broadcastBeacon()
 		{
 			socket.writeDatagram(beacon, QHostAddress::Broadcast, mAltPort);
 		}
-	}
-	if (mNumDiscoveryBroadcasts > 0)
-	{
-		mNumDiscoveryBroadcasts -= 1;
 	}
 }

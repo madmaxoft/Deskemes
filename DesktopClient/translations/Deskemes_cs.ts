@@ -84,6 +84,10 @@
         <source>Avatar</source>
         <translation type="unfinished"></translation>
     </message>
+    <message>
+        <source>Need pairing</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>NewDeviceWizard</name>
@@ -163,13 +167,6 @@
     </message>
     <message>
         <source>Deskemes has detected an unknown fatal error. Use a debugger to view detailed runtime log.</source>
-        <translation type="unfinished"></translation>
-    </message>
-</context>
-<context>
-    <name>TcpListener</name>
-    <message>
-        <source>TCP</source>
         <translation type="unfinished"></translation>
     </message>
 </context>

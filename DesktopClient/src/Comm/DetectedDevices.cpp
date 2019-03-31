@@ -194,7 +194,8 @@ QVariant DetectedDevices::data(const QModelIndex & aIndex, int aRole) const
 					switch (device->status())
 					{
 						case Device::dsOnline:       return tr("Online");
-						case Device::dsFirstTime:    return tr("Not paired");
+						case Device::dsNoPubKey:     return tr("Not paired");
+						case Device::dsNeedPairing:  return tr("Need pairing");
 						case Device::dsUnauthorized: return tr("Authorization needed");
 						case Device::dsOffline:      return tr("Offline");
 					}

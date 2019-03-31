@@ -37,6 +37,24 @@ public:
 
 
 
+	// Copy-constructor:
+	Optional(const Optional<T> & aOther):
+		mIsPresent(aOther.mIsPresent),
+		mValue(aOther.mValue)
+	{
+	}
+
+
+
+	// Move-constructor:
+	Optional(Optional<T> && aOther):
+		mIsPresent(aOther.mIsPresent),
+		mValue(std::move(aOther.mValue))
+	{
+	}
+
+
+
 	constexpr bool operator == (const Optional<T> & aOther) const noexcept
 	{
 		return (

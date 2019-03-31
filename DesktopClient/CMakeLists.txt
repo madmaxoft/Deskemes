@@ -147,6 +147,7 @@ set(SOURCES
 	# The Communication-related sources:
 	src/Comm/AdbCommunicator.cpp
 	src/Comm/Connection.cpp
+	src/Comm/ConnectionMgr.cpp
 	src/Comm/DetectedDevices.cpp
 	src/Comm/PhaseHandlers.cpp
 	src/Comm/TcpListener.cpp
@@ -157,6 +158,8 @@ set(SOURCES
 	src/DB/Database.cpp
 	src/DB/DatabaseBackup.cpp
 	src/DB/DatabaseUpgrade.cpp
+	src/DB/DevicePairings.cpp
+	src/DB/DeviceBlacklist.cpp
 
 	# The UI sources:
 	src/UI/NewDeviceWizard.cpp
@@ -183,6 +186,7 @@ set(HEADERS
 	# The Communication-related headers:
 	src/Comm/AdbCommunicator.hpp
 	src/Comm/Connection.hpp
+	src/Comm/ConnectionMgr.hpp
 	src/Comm/DetectedDevices.hpp
 	src/Comm/PhaseHandlers.hpp
 	src/Comm/TcpListener.hpp
@@ -193,6 +197,8 @@ set(HEADERS
 	src/DB/Database.hpp
 	src/DB/DatabaseBackup.hpp
 	src/DB/DatabaseUpgrade.hpp
+	src/DB/DevicePairings.hpp
+	src/DB/DeviceBlacklist.hpp
 
 	# The UI headers:
 	src/UI/NewDeviceWizard.hpp

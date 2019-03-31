@@ -84,6 +84,42 @@ protected:
 
 
 ////////////////////////////////////////////////////////////////////////////////
+// Database::DBConnection
+
+Database::DBConnection::DBConnection(Database & aParent):
+	mParent(aParent)
+{
+	mParent.mMtxConnection.lock();
+}
+
+
+
+
+
+Database::DBConnection::~DBConnection()
+{
+	mParent.mMtxConnection.unlock();
+}
+
+
+
+
+
+QSqlQuery Database::DBConnection::query(const QString & aQueryString)
+{
+	QSqlQuery res(mParent.mDatabase);
+	if (!res.prepare(aQueryString))
+	{
+		throw DBQueryError("Failed to prepare query: %1 (query \"%2\")", res.lastError().text(), aQueryString);
+	}
+	return res;
+}
+
+
+
+
+
+////////////////////////////////////////////////////////////////////////////////
 // Database:
 
 Database::Database(ComponentCollection & aComponents):
@@ -153,4 +189,13 @@ void Database::open(const QString & a_DBFileName)
 
 	// Upgrade the DB to the latest version:
 	DatabaseUpgrade::upgrade(*this);
+}
+
+
+
+
+
+Database::DBConnection Database::connection()
+{
+	return Database::DBConnection(*this);
 }

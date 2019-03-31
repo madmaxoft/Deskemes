@@ -43,9 +43,10 @@ public:
 	public:
 		enum Status
 		{
-			dsOnline,        ///< The device is working properly
-			dsFirstTime,     ///< The device hasn't been paired yet (just now discovered, have no pubkey)
-			dsUnauthorized,  ///< The device requires on-device authorization before it can be accessed
+			dsOnline,        ///< The device is working properly (fully connected)
+			dsNoPubKey,      ///< The device hasn't been paired yet (just now discovered, have no pubkey)
+			dsNeedPairing,   ///< The device has provided a PublicKey but it's not trusted, need user's confirmation
+			dsUnauthorized,  ///< The device requires on-device (ADB) authorization before it can be accessed
 			dsOffline,       ///< The device is known but unavailable (ADB bootloader, ...)
 		};
 

@@ -1,7 +1,8 @@
 #include "PgTcpDeviceList.hpp"
 #include "ui_PgTcpDeviceList.h"
 #include "../../ComponentCollection.hpp"
-#include "../../Comm/TcpListener.hpp"
+#include "../../Comm/ConnectionMgr.hpp"
+#include "../../Comm/UdpBroadcaster.hpp"
 
 
 
@@ -30,6 +31,7 @@ PgTcpDeviceList::~PgTcpDeviceList()
 
 void PgTcpDeviceList::initializePage()
 {
-	mDetectedDevices = mComponents.get<TcpListener>()->detectDevices();
+	mDetectedDevices = mComponents.get<ConnectionMgr>()->detectDevices();
 	mUI->tvDevices->setModel(mDetectedDevices.get());
+	mComponents.get<UdpBroadcaster>()->startDiscovery();
 }

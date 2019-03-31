@@ -1,6 +1,7 @@
 #include "Connection.hpp"
 #include <cassert>
 #include "PhaseHandlers.hpp"
+#include "../DB/DevicePairings.hpp"
 
 
 
@@ -57,7 +58,7 @@ void Connection::requestPairing()
 {
 	assert(mState == csInitial);
 	setState(csRequestedPairing);
-	emit requestingPairing();
+	emit requestingPairing(this);
 }
 
 
@@ -81,7 +82,16 @@ std::unique_ptr<PhaseHandler> Connection::setPhaseHandler(
 void Connection::setRemotePublicID(const QByteArray & aPublicID)
 {
 	mRemotePublicID = aPublicID;
-	emit receivedPublicID();
+	emit receivedPublicID(this);
+
+	// If we have a pairing to the device, send our pubkey now:
+	auto pairings = mComponents.get<DevicePairings>();
+	auto pairing = pairings->lookupDevice(mRemotePublicID.value());
+	if (pairing.isPresent())
+	{
+		// TODO
+	}
+
 	checkRemotePublicKeyAndID();
 }
 
@@ -92,7 +102,7 @@ void Connection::setRemotePublicID(const QByteArray & aPublicID)
 void Connection::setRemotePublicKey(const QByteArray & aPubKeyData)
 {
 	mRemotePublicKeyData = aPubKeyData;
-	emit receivedPublicKey();
+	emit receivedPublicKey(this);
 	checkRemotePublicKeyAndID();
 }
 
@@ -108,9 +118,24 @@ void Connection::checkRemotePublicKeyAndID()
 		return;
 	}
 
-	// TODO: Check the pairing
-	setState(csNeedPairing);
-	emit unknownPairing();
+	// Check the pairing:
+	auto pairings = mComponents.get<DevicePairings>();
+	auto pairing = pairings->lookupDevice(mRemotePublicID.value());
+	if (!pairing.isPresent())
+	{
+		setState(csUnknownPairing);
+		emit unknownPairing(this);
+	}
+	else if (pairing.value().mDevicePublicKeyData == mRemotePublicKeyData.value())
+	{
+		setState(csKnownPairing);
+		emit knownPairing(this);
+	}
+	else
+	{
+		setState(csDifferentKey);
+		emit differentKey(this);
+	}
 }
 
 
@@ -146,5 +171,5 @@ void Connection::ioReadyRead()
 
 void Connection::ioClosing()
 {
-	emit disconnected();
+	emit disconnected(this);
 }

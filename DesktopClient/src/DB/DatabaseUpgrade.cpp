@@ -113,6 +113,22 @@ static const std::vector<VersionScript> g_VersionScripts =
 
 		"INSERT INTO Version (Version) VALUES (1)",
 	}),  // Version 0 to Version 1
+
+
+
+	// Version 1 to Version 2:
+	// Added DevicePairings and DeviceBlacklist
+	VersionScript({
+		"CREATE TABLE DevicePairings ("
+			"DeviceID            BLOB,"
+			"DevicePublicKeyData BLOB,"
+			"LocalPublicKeyData  BLOB"
+		")",
+
+		"CREATE TABLE DeviceBlacklist ("
+			"DeviceID BLOB"
+		")",
+	}),  // Version 1 to Version 2
 };
 
 

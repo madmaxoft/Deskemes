@@ -32,6 +32,9 @@ public:
 		ckDevices,
 		ckUdpBroadcaster,
 		ckTcpListener,
+		ckDevicePairings,   ///< The storage of the device pairing data (DevPubID <-> {DevPubKey, LocalPubKey})
+		ckDeviceBlacklist,  ///< The storage of device blacklist
+		ckConnectionMgr,    ///< The list of all device connections
 	};
 
 

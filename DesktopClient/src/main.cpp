@@ -14,7 +14,10 @@
 #include "Settings.hpp"
 #include "DB/DatabaseBackup.hpp"
 #include "DB/Database.hpp"
+#include "DB/DevicePairings.hpp"
+#include "DB/DeviceBlacklist.hpp"
 #include "UI/WndDevices.hpp"
+#include "Comm/ConnectionMgr.hpp"
 #include "Comm/DetectedDevices.hpp"
 #include "Comm/TcpListener.hpp"
 #include "Comm/UdpBroadcaster.hpp"
@@ -110,18 +113,25 @@ int main(int argc, char *argv[])
 		cc.addComponent(instConf);
 		auto mainDB      = cc.addNew<Database>(cc);
 		auto devs        = cc.addNew<Devices>(cc);
+		auto connMgr     = cc.addNew<ConnectionMgr>(cc);
 		auto broadcaster = cc.addNew<UdpBroadcaster>(cc);
 		auto listener    = cc.addNew<TcpListener>(cc);
-
-		listener->start();
-		broadcaster->start();
+		auto pairings    = cc.addNew<DevicePairings>(cc);
+		auto blacklist   = cc.addNew<DeviceBlacklist>(cc);
 
 		// Connect the main objects together:
+		// TODO
 
 		// Load the DB:
 		auto dbFile = instConf->dbFileName();
 		DatabaseBackup::dailyBackupOnStartup(dbFile, instConf->dbBackupsFolder());
 		mainDB->open(dbFile);
+
+		// Start the background services:
+		pairings->start();
+		blacklist->start();
+		listener->start();
+		broadcaster->start();
 
 		// Show the UI:
 		WndDevices w(cc);

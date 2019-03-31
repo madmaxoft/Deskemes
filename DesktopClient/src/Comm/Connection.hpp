@@ -43,10 +43,12 @@ public:
 
 	enum State
 	{
-		csInitial,           ///< The connection is in the initial cleartext phase
-		csNeedPairing,       ///< This side has determined that pairing is needed, waiting for upper level to initiate pairing
-		csNoNeedPairing,     ///< This side has determined that the remote is known, no pairing needed
+		csInitial,           ///< The connection is in the initial cleartext phase / no public key received
+		csUnknownPairing,    ///< This side has found no pairing for this device, waiting for upper level to initiate pairing
+		csKnownPairing,      ///< This side has determined that the remote is known, no pairing needed
 		csRequestedPairing,  ///< The connection is waiting for pairing in the UI
+		csBlacklisted,       ///< The device's public ID is in the blacklist
+		csDifferentKey,      ///< The device's public key is different from the last time we paired (MITM?)
 		csEncrypted,         ///< The connection is in the encrypted phase
 	};
 
@@ -69,8 +71,8 @@ public:
 	State state() const { return mState; }
 
 	// Simple setters:
-	void setFriendlyName(const QString & aFriendlyName) { mFriendlyName = aFriendlyName; emit receivedFriendlyName(); }
-	void setAvatar(const QByteArray & aAvatar) { mAvatar = aAvatar; emit receivedAvatar(); }
+	void setFriendlyName(const QString & aFriendlyName) { mFriendlyName = aFriendlyName; emit receivedFriendlyName(this); }
+	void setAvatar(const QByteArray & aAvatar) { mAvatar = aAvatar; emit receivedAvatar(this); }
 
 	/** Terminates the connection forcefully. */
 	void terminate();
@@ -144,32 +146,36 @@ protected:
 signals:
 
 	/** Emitted when the connection to the device is lost. */
-	void disconnected();
+	void disconnected(Connection * aConnection);
 
 	/** Emitted when the connection detects that pairing with the remote peer is necessary
 	(either a "pair" request comes from the peer, or we sent it to them.
-	The receiver should also hook the disconnected() signal and dismiss the pairing if it fires. */
-	void requestingPairing();
+	The receiver should also hook the disconnected() signal and dismiss the pairing UI if it fires. */
+	void requestingPairing(Connection * aConnection);
 
-	/** Emitted when the remote sends an unknown id+key pair.
+	/** Emitted when the remote sends an unknown PublicID.
 	The receiver should either initiate pairing via initiatePairing(), or drop the entire connection. */
-	void unknownPairing();
+	void unknownPairing(Connection * aConnection);
 
 	/** Emitted when the remote sends a known id+key pair.
 	The remote may still need to do pairing; if so, the requestingPairing() will be signalled later. */
-	void knownPairing();
+	void knownPairing(Connection * aConnection);
+
+	/** Emitted when the remote sends an id+key pair and we have a different key on file.
+	This is most likely a MITM attack, so the connection should be dropped soon (unless detecting devices to overwrite old key). */
+	void differentKey(Connection * aConnection);
 
 	/** Emitted when the remote public ID is received. */
-	void receivedPublicID();
+	void receivedPublicID(Connection * aConnection);
 
 	/** Emitted when the remote public key is received. */
-	void receivedPublicKey();
+	void receivedPublicKey(Connection * aConnection);
 
 	/** Emitted when the friendly name is received. */
-	void receivedFriendlyName();
+	void receivedFriendlyName(Connection * aConnection);
 
 	/** Emitted when the avatar is received. */
-	void receivedAvatar();
+	void receivedAvatar(Connection * aConnection);
 
 	/** Emitted after the state has changed. */
 	void stateChanged(State aNewState);

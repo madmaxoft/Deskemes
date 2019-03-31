@@ -149,7 +149,6 @@ set(SOURCES
 	src/Comm/Connection.cpp
 	src/Comm/ConnectionMgr.cpp
 	src/Comm/DetectedDevices.cpp
-	src/Comm/PhaseHandlers.cpp
 	src/Comm/TcpListener.cpp
 	src/Comm/UdpBroadcaster.cpp
 	src/Comm/UsbDeviceEnumerator.cpp
@@ -188,7 +187,6 @@ set(HEADERS
 	src/Comm/Connection.hpp
 	src/Comm/ConnectionMgr.hpp
 	src/Comm/DetectedDevices.hpp
-	src/Comm/PhaseHandlers.hpp
 	src/Comm/TcpListener.hpp
 	src/Comm/UdpBroadcaster.hpp
 	src/Comm/UsbDeviceEnumerator.hpp

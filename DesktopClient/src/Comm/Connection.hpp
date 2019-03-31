@@ -10,17 +10,10 @@
 
 
 
-// fwd:
-class PhaseHandler;
-
-
-
-
-
 /** A class that represents a single connection to a device.
 A device can utilize multiple connections to the computer. The connections can use different transports
 (TCP, USB, Bluetooth), each transport provides a QIODevice interface for the actual IO.
-The Connection object handles the common protocol phasing (unauthenticated - TLS handshake - TLS muxed).
+The Connection object handles the base protocol (unauthenticated - TLS handshake - TLS muxed).
 The Connection also provides the transport name and kind that is shown to the user (text + icon).
 Upon receiving data from the remote, it calls the current PhaseHandler's processIncomingData() method.
 To send data to the remote, call write(). */
@@ -77,18 +70,8 @@ public:
 	/** Terminates the connection forcefully. */
 	void terminate();
 
-	/** Writes the specified data to the remote end. */
-	void write(const QByteArray & aData);
-
 	/** Marks the connection as requesting pairing, and emits the requestingPairing signal. */
 	void requestPairing();
-
-	/** Changes the PhaseHandler to the specified one, and returns the old one.
-	Also updates the internal state to the specified state. */
-	std::unique_ptr<PhaseHandler> setPhaseHandler(
-		std::unique_ptr<PhaseHandler> && aNewHandler,
-		State aNewState
-	);
 
 	/** Stores the remote public ID.
 	Checks whether the public ID + key combo is known or not, sets state accordingly. */
@@ -113,9 +96,6 @@ protected:
 	/** The user-visible name of the transport used, such as "USB" or "WiFi". */
 	QString mTransportName;
 
-	/** The handler that processes the incoming data. */
-	std::unique_ptr<PhaseHandler> mPhaseHandler;
-
 	/** The current state of the connection. */
 	State mState;
 
@@ -131,6 +111,22 @@ protected:
 	/** The public key from the remote device, raw data. */
 	Optional<QByteArray> mRemotePublicKeyData;
 
+	/** Buffer for the unprocessed incoming data.
+	The data is stored here until a full message can be extracted; it is then removed from the buffer.
+	If the connection is in the TLS state, the data here is already decrypted. */
+	QByteArray mIncomingData;
+
+	/** True after the initial protocol identification has been received.
+	Used to detect messages sent without proper identification first. */
+	bool mHasReceivedIdentification;
+
+	/** The protocol version the remote has indicated in their protocol ident. */
+	quint16 mRemoteVersion;
+
+	/** Set to true after the StartTls request has been sent
+	No more cleartext messages are allowed to be sent from us. */
+	bool mHasSentStartTls;
+
 
 	/** Checks whether the remote public key and ID pair is known.
 	If either is missing, silently bails out.
@@ -142,6 +138,25 @@ protected:
 	Emits the stateChanged signal. */
 	void setState(State aNewState);
 
+	/** Processes the incoming data.
+	Based on the current protocol state, handles the data as cleartext or TLSMux. */
+	void processIncomingData(const QByteArray & aData);
+
+	/** Extracts a complete cleartext protocol message from mIncomingData, and acts on it.
+	Returns true if a complete message was extracted, false if there's no complete message. */
+	bool extractAndHandleCleartextMessage();
+
+	/** Handles the specified message. */
+	void handleCleartextMessage(const quint32 aMsgType, const QByteArray & aMsg);
+
+	/** Handles the "dsms" message. */
+	void handleCleartextMessageDsms(const QByteArray & aMsg);
+
+	/** Handles the "stlt" message, starting the TLS, if appropriate. */
+	void handleCleartextMessageStls();
+
+	/** Sends the specified message over to the remote peer. */
+	void sendCleartextMessage(quint32 aMsgType, const QByteArray & aMsg = QByteArray());
 
 signals:
 

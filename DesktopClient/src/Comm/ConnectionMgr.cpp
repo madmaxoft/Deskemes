@@ -49,12 +49,30 @@ std::shared_ptr<DetectedDevices> ConnectionMgr::detectDevices()
 
 
 
+ConnectionPtr ConnectionMgr::connectionFromID(const QByteArray & aConnectionID)
+{
+	QMutexLocker lock(&mMtxConnections);
+	for (const auto & conn: mConnections)
+	{
+		if (conn->connectionID() == aConnectionID)
+		{
+			return conn;
+		}
+	}
+	return nullptr;
+}
+
+
+
+
+
 void ConnectionMgr::addConnection(std::shared_ptr<Connection> aConnection)
 {
 	// Register the change notifications for the device detection:
 	connect(aConnection.get(), &Connection::receivedPublicID,     this, &ConnectionMgr::connUpdateDetails);
 	connect(aConnection.get(), &Connection::receivedFriendlyName, this, &ConnectionMgr::connUpdateDetails);
 	connect(aConnection.get(), &Connection::receivedAvatar,       this, &ConnectionMgr::connUpdateDetails);
+	connect(aConnection.get(), &Connection::stateChanged,         this, &ConnectionMgr::connUpdateDetails);
 
 	QMutexLocker lock(&mMtxConnections);
 	mConnections.push_back(aConnection);
@@ -66,18 +84,8 @@ void ConnectionMgr::addConnection(std::shared_ptr<Connection> aConnection)
 
 void ConnectionMgr::updateDetectedDevice(DetectedDevices & aDetection, Connection & aConnection)
 {
-	if (!aConnection.remotePublicID().isPresent())
-	{
-		return;
-	}
-	const auto & id = aConnection.remotePublicID().value();
-	DetectedDevices::Device::Status status = DetectedDevices::Device::dsNoPubKey;
-	if (aConnection.remotePublicKeyData().isPresent())
-	{
-		status = DetectedDevices::Device::dsNeedPairing;
-		// TODO: More statuses
-	}
-	aDetection.setDeviceStatus(id, status);  // Also creates the device if not already exist
+	const auto & id = aConnection.connectionID();
+	aDetection.setDeviceStatus(id, deviceStatusFromConnection(aConnection));  // Also creates the device if not already exist
 	const auto & friendlyName = aConnection.friendlyName();
 	if (friendlyName.isPresent())
 	{
@@ -88,6 +96,30 @@ void ConnectionMgr::updateDetectedDevice(DetectedDevices & aDetection, Connectio
 	{
 		aDetection.setDeviceAvatar(id, avatar.value());
 	}
+}
+
+
+
+
+
+DetectedDevices::Device::Status ConnectionMgr::deviceStatusFromConnection(const Connection & aConnection)
+{
+	if (!aConnection.remotePublicKeyData().isPresent())
+	{
+		return DetectedDevices::Device::dsNoPubKey;
+	}
+
+	switch (aConnection.state())
+	{
+		case Connection::csInitial:          return DetectedDevices::Device::dsNoPubKey;
+		case Connection::csUnknownPairing:   return DetectedDevices::Device::dsNeedPairing;
+		case Connection::csKnownPairing:     return DetectedDevices::Device::dsNeedPairing;
+		case Connection::csRequestedPairing: return DetectedDevices::Device::dsNeedPairing;
+		case Connection::csBlacklisted:      return DetectedDevices::Device::dsBlacklisted;
+		case Connection::csDifferentKey:     return DetectedDevices::Device::dsNeedPairing;
+		case Connection::csEncrypted:        return DetectedDevices::Device::dsOnline;
+	}
+	return DetectedDevices::Device::dsNeedPairing;
 }
 
 
@@ -118,12 +150,6 @@ void ConnectionMgr::removeDetection(QObject * aDetection)
 void ConnectionMgr::connUpdateDetails(Connection * aConnection)
 {
 	assert(aConnection != nullptr);
-
-	if (!aConnection->remotePublicID().isPresent())
-	{
-		// Connection hasn't provided the PublicID yet, so it's not in the detections.
-		return;
-	}
 
 	// Update the details in all detections:
 	QMutexLocker lock(&mMtxDetections);

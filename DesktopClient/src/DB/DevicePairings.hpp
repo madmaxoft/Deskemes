@@ -34,6 +34,9 @@ public:
 
 		/** The local public key that we've used to pair with the device. */
 		QByteArray mLocalPublicKeyData;
+
+		/** The local private key that we've used to pair with the device. */
+		QByteArray mLocalPrivateKeyData;
 	};
 
 
@@ -50,8 +53,13 @@ public:
 	void pairDevice(
 		const QByteArray & aDevicePublicID,
 		const QByteArray & aDevicePublicKeyData,
-		const QByteArray & aLocalPublicKeyData
+		const QByteArray & aLocalPublicKeyData,
+		const QByteArray & aLocalPrivateKeyData
 	);
+
+	/** Generates a new keypair for the specified device and stores it in the DB.
+	Silently ignored a keypair for the device already exists. */
+	void createLocalKeyPair(const QByteArray & aDevicePublicID);
 
 
 protected:

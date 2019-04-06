@@ -167,6 +167,10 @@ set(SOURCES
 
 	# The Wizard pages:
 	src/UI/Pages/PgConnectionType.cpp
+	src/UI/Pages/PgPairConfirm.cpp
+	src/UI/Pages/PgPairInit.cpp
+	src/UI/Pages/PgPairingInProgress.cpp
+	src/UI/Pages/PgSucceeded.cpp
 	src/UI/Pages/PgTcpDeviceList.cpp
 	src/UI/Pages/PgUsbDeviceList.cpp
 
@@ -205,6 +209,10 @@ set(HEADERS
 
 	# The Wizard pages:
 	src/UI/Pages/PgConnectionType.hpp
+	src/UI/Pages/PgPairConfirm.hpp
+	src/UI/Pages/PgPairInit.hpp
+	src/UI/Pages/PgPairingInProgress.hpp
+	src/UI/Pages/PgSucceeded.hpp
 	src/UI/Pages/PgTcpDeviceList.hpp
 	src/UI/Pages/PgUsbDeviceList.hpp
 
@@ -225,6 +233,9 @@ set(UI
 	src/UI/WndDevices.ui
 
 	src/UI/Pages/PgConnectionType.ui
+	src/UI/Pages/PgPairConfirm.ui
+	src/UI/Pages/PgPairInit.ui
+	src/UI/Pages/PgPairingInProgress.ui
 	src/UI/Pages/PgTcpDeviceList.ui
 	src/UI/Pages/PgUsbDeviceList.ui
 )

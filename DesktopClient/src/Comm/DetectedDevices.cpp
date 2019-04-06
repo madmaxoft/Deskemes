@@ -174,6 +174,10 @@ QVariant DetectedDevices::data(const QModelIndex & aIndex, int aRole) const
 	const auto & device = mDevices[static_cast<size_t>(row)];
 	switch (aRole)
 	{
+		case roleDevPtr:
+		{
+			return QVariant::fromValue(device);
+		}
 		case Qt::DisplayRole:
 		{
 			switch (aIndex.column())
@@ -198,6 +202,7 @@ QVariant DetectedDevices::data(const QModelIndex & aIndex, int aRole) const
 						case Device::dsNeedPairing:  return tr("Need pairing");
 						case Device::dsUnauthorized: return tr("Authorization needed");
 						case Device::dsOffline:      return tr("Offline");
+						case Device::dsBlacklisted:  return tr("Blacklisted");
 					}
 					return {};
 				}
@@ -259,6 +264,7 @@ void DetectedDevices::invAddDevice(const QByteArray & aEnumeratorDeviceID, Detec
 		auto idx = index(row, colStatus);
 		emit deviceStatusChanged(aEnumeratorDeviceID, aStatus);
 		emit dataChanged(idx, idx);
+		return;
 	}
 
 	// Device not found, create a new one:

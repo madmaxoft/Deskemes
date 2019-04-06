@@ -104,19 +104,47 @@ function Device:processCleartextMessage(aMsgType, aMsgData)
 			self:sendCleartextMessage("avtr", avatar)
 		end
 		self:sendCleartextMessage("pubi", "DeviceSimulatorPublicID")
-		print("Sending TLS request")
+
+		--[[
+		-- DEBUG: This should terminate the connection, since no pubkey has been transmitted:
+		print("Sending TLS request, expecting the connection to terminate.")
 		self:sendCleartextMessage("stls")
+		--]]
+
+
 	elseif (aMsgType == "fnam") then
 		print("Received friendy name: " .. aMsgData)
 	elseif (aMsgType == "avtr") then
 		print("Received avatar: " .. #aMsgData .. " bytes")
 	elseif (aMsgType == "pubi") then
 		print("Received public ID: 0x" .. toHex(aMsgData))
-		if (aMsgData ~= self.mPublicID) then
+		if (aMsgData ~= self.mBeaconPublicID) then
 			error("The public ID received through TCP is different than the UDP-broadcast one.")
 		end
+		self.mRemotePublicID = aMsgData
+	elseif (aMsgType == "pubk") then
+		print("Received client's public key")
+		if not(self.mRemotePublicID) then
+			error("The remote sent its public key without sending its public ID first")
+		end
+		self.mRemotePublicKey = aMsgData
+
+		socket.select(nil, nil, 1)  -- Wait 1 second
+		print("Sending our (dummy) public key")
+		self:sendCleartextMessage("pubk", "DummySimulatorPublicKeyData")
+		--[[
+		print("Sending TLS request.")
+		self:sendCleartextMessage("stls")
+		--]]
 	elseif (aMsgType == "stls") then
 		print("Received a StartTLS request")
+		if not(self.mRemotePublicKey) then
+			error("The remote is starting TLS without a public key")
+		end
+
+		socket.select(nil, nil, 1)  -- Wait 1 second
+		print("Starting TLS, too")
+		self:sendCleartextMessage("stls")
 	end
 end
 
@@ -159,7 +187,7 @@ function Device:connect(aIP, aTcpPort, aBeaconPublicID)
 	assert(type(aIP) == "string")
 	assert(tonumber(aTcpPort))
 
-	self.mPublicID = aBeaconPublicID
+	self.mBeaconPublicID = aBeaconPublicID
 	print("Connecting as a device to " .. aIP .. ":" .. aTcpPort .. "...")
 	self.mSocket = socket.connect(aIP, aTcpPort)
 	if not(self.mSocket) then

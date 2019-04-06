@@ -16,6 +16,9 @@
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
     <widget class="QRadioButton" name="rbConnUsb">
+     <property name="enabled">
+      <bool>false</bool>
+     </property>
      <property name="text">
       <string>USB cable</string>
      </property>
@@ -108,6 +111,9 @@
    </item>
    <item>
     <widget class="QRadioButton" name="rbConnBluetooth">
+     <property name="enabled">
+      <bool>false</bool>
+     </property>
      <property name="text">
       <string>Bluetooth</string>
      </property>

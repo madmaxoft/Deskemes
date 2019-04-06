@@ -36,6 +36,11 @@ public:
 		colMax,
 	};
 
+	enum
+	{
+		roleDevPtr = Qt::UserRole + 1,  ///< The role used to query the underlying DevicePtr for the row
+	};
+
 
 	/** Encapsulates data for a single device. */
 	class Device
@@ -47,6 +52,7 @@ public:
 			dsNoPubKey,      ///< The device hasn't been paired yet (just now discovered, have no pubkey)
 			dsNeedPairing,   ///< The device has provided a PublicKey but it's not trusted, need user's confirmation
 			dsUnauthorized,  ///< The device requires on-device (ADB) authorization before it can be accessed
+			dsBlacklisted,   ///< The device has been blacklisted, connections will not be allowed
 			dsOffline,       ///< The device is known but unavailable (ADB bootloader, ...)
 		};
 
@@ -68,6 +74,9 @@ public:
 
 		/** The Device's ID understood by the enumerator. */
 		QByteArray mEnumeratorDeviceID;
+
+		/** The ID of the connection that has been made to the device (available in ConnectionMgr). */
+		QByteArray mConnectionID;
 
 		/** Current status of the device. */
 		Status mStatus;
@@ -178,3 +187,4 @@ protected:
 };
 
 Q_DECLARE_METATYPE(DetectedDevices::DeviceStatusList);
+Q_DECLARE_METATYPE(DetectedDevices::DevicePtr);

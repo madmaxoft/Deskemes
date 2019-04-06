@@ -15,8 +15,7 @@ A device can utilize multiple connections to the computer. The connections can u
 (TCP, USB, Bluetooth), each transport provides a QIODevice interface for the actual IO.
 The Connection object handles the base protocol (unauthenticated - TLS handshake - TLS muxed).
 The Connection also provides the transport name and kind that is shown to the user (text + icon).
-Upon receiving data from the remote, it calls the current PhaseHandler's processIncomingData() method.
-To send data to the remote, call write(). */
+Each connection is uniquely identified by its EnumeratorID. */
 class Connection:
 	public QObject
 {
@@ -46,9 +45,14 @@ public:
 	};
 
 
-	/** Creates a new connection in the Unauthenticated phase. */
+	/** Creates a new connection in the csInitial phase.
+	The ConnectionID is used as a unique identifier of the connection, it is assigned by whoever enumerated
+	the connection.
+	The IO is used for the actual reading and writing data through the connection.
+	The TransportKind and TransportName are primarily used for UI display to the user. */
 	explicit Connection(
 		ComponentCollection & aComponents,
+		const QByteArray & aConnectionID,
 		QIODevice * aIO,
 		TransportKind aTransportKind,
 		const QString & aTransportName,
@@ -57,6 +61,7 @@ public:
 
 
 	// Simple getters:
+	const QByteArray & connectionID() const { return mConnectionID; }
 	const Optional<QString> & friendlyName() const { return mFriendlyName; }
 	const Optional<QByteArray> & avatar() const { return mAvatar; }
 	const Optional<QByteArray> & remotePublicID() const { return mRemotePublicID; }
@@ -68,10 +73,10 @@ public:
 	void setAvatar(const QByteArray & aAvatar) { mAvatar = aAvatar; emit receivedAvatar(this); }
 
 	/** Terminates the connection forcefully. */
-	void terminate();
+	Q_INVOKABLE void terminate();
 
 	/** Marks the connection as requesting pairing, and emits the requestingPairing signal. */
-	void requestPairing();
+	Q_INVOKABLE void requestPairing();
 
 	/** Stores the remote public ID.
 	Checks whether the public ID + key combo is known or not, sets state accordingly. */
@@ -81,11 +86,23 @@ public:
 	Checks whether the public ID + key combo is known or not, sets state accordingly. */
 	void setRemotePublicKey(const QByteArray & aPubKeyData);
 
+	/** Sends the local public key to the remote.
+	The public key is queried from DevicePairings (asserts that it's valid).
+	Asserts that the protocol is still in the cleartext phase and StartTls hasn't been sent. */
+	Q_INVOKABLE void sendLocalPublicKey();
+
+	/** Called by the UI when the pairing has been approved locally.
+	Stores the pairing in DevicePairings and sends the StartTLS request to the device. */
+	Q_INVOKABLE void localPairingApproved();
+
 
 protected:
 
 	/** The components of the entire app. */
 	ComponentCollection & mComponents;
+
+	/** The unique identifier of the connection, assigned by the enumerator. */
+	const QByteArray mConnectionID;
 
 	/** The actual IO used for communicating; provided by the transport that created the connection. */
 	QIODevice * mIO;
@@ -152,11 +169,13 @@ protected:
 	/** Handles the "dsms" message. */
 	void handleCleartextMessageDsms(const QByteArray & aMsg);
 
-	/** Handles the "stlt" message, starting the TLS, if appropriate. */
+	/** Handles the "stlt" message, starting the TLS, if appropriate.
+	If the protocol has been violated (missing id / key), the connection terminates. */
 	void handleCleartextMessageStls();
 
 	/** Sends the specified message over to the remote peer. */
 	void sendCleartextMessage(quint32 aMsgType, const QByteArray & aMsg = QByteArray());
+
 
 signals:
 
@@ -193,7 +212,7 @@ signals:
 	void receivedAvatar(Connection * aConnection);
 
 	/** Emitted after the state has changed. */
-	void stateChanged(State aNewState);
+	void stateChanged(Connection * aConnection, State aNewState);
 
 
 public slots:
@@ -208,3 +227,7 @@ private slots:
 	/** The mIO is closing. */
 	void ioClosing();
 };
+
+using ConnectionPtr = std::shared_ptr<Connection>;
+
+Q_DECLARE_METATYPE(ConnectionPtr);

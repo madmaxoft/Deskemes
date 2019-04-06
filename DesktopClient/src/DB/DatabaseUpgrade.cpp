@@ -129,6 +129,14 @@ static const std::vector<VersionScript> g_VersionScripts =
 			"DeviceID BLOB"
 		")",
 	}),  // Version 1 to Version 2
+
+
+
+	// Version 2 to Version 3:
+	// Added private key data to DevicePairings
+	VersionScript({
+		"ALTER TABLE DevicePairings ADD COLUMN LocalPrivateKeyData BLOB",
+	}),  // Version 2 to Version 3
 };
 
 

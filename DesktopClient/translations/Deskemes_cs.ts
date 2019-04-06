@@ -88,6 +88,10 @@
         <source>Need pairing</source>
         <translation type="unfinished"></translation>
     </message>
+    <message>
+        <source>Blacklisted</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>NewDeviceWizard</name>
@@ -115,10 +119,6 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Connection type:</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <source>Please select the type of connection you would like to use:</source>
         <translation type="unfinished"></translation>
     </message>
@@ -132,6 +132,88 @@
     </message>
     <message>
         <source>Practically the same comfort as WiFi / LAN, although Bluetooth usually has shorter range. Again, manual first time setup is needed.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Connection type:</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>PgPairConfirm</name>
+    <message>
+        <source>Form</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Pairing ensures that there is no-one listening in on the connection between Deskemes and your device. Make sure that the keys match, otherwise there could be an attacker trying to take over the connection.
+
+Check that the key displayed here matches the key displayed on your device.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Yes, the keys match</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>This device uses a key not yet encountered</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Confirm encryption key</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>PgPairInit</name>
+    <message>
+        <source>Form</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Generate public key for %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Please wait...</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Initializing a secure connection to the device</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Waiting for device</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>PgPairingInProgress</name>
+    <message>
+        <source>WizardPage</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Waiting for confirmation.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Please confirm the pairing on your device</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Waiting for confirmation</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>PgSucceeded</name>
+    <message>
+        <source>Success</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The device has been successfully added</source>
         <translation type="unfinished"></translation>
     </message>
 </context>

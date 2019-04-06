@@ -52,8 +52,10 @@ void TcpListener::newConnection()
 	{
 		return;
 	}
+	auto id = QString("TCP:[%1]:%2").arg(tcpConn->peerAddress().toString()).arg(tcpConn->peerPort()).toUtf8();
 	auto conn = std::make_shared<Connection>(
 		mComponents,
+		id,
 		reinterpret_cast<QIODevice *>(tcpConn),
 		Connection::tkTcp,
 		tcpConn->peerAddress().toString()

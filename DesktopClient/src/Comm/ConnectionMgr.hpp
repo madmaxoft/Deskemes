@@ -17,6 +17,7 @@
 
 
 /** Manages all connections to the devices that have been established.
+Connections are uniquely identified by their EnumeratorID.
 Receives connections from the TCP, USB and Bluetooth listeners, manages all of them.
 Also supports detection, handles even connections that haven't been paired yet. */
 class ConnectionMgr:
@@ -41,7 +42,11 @@ public:
 	/** Adds the specified connection to the internal list of managed connections.
 	Sends the connection to all current detections.
 	To be called by the TCP, USB or Bluetooth listeners when they receive a new connection. */
-	void addConnection(std::shared_ptr<Connection> aConnection);
+	void addConnection(ConnectionPtr aConnection);
+
+	/** Returns the connection identified by the specified ConnectionID.
+	Returns nullptr if there's no such connection. */
+	ConnectionPtr connectionFromID(const QByteArray & aConnectionID);
 
 
 protected:
@@ -49,7 +54,7 @@ protected:
 	/** The components of the entire app. */
 	ComponentCollection & mComponents;
 
-	/** All current TCP connections.
+	/** All current connections.
 	Protected against multithreaded access by mMtxConnections. */
 	std::vector<std::shared_ptr<Connection>> mConnections;
 
@@ -69,8 +74,12 @@ protected:
 	the specified detection. */
 	void updateDetectedDevice(DetectedDevices & aDetection, Connection & aConnection);
 
+	/** Returns the detected device status that best describes the connection's status. */
+	DetectedDevices::Device::Status deviceStatusFromConnection(const Connection & aConnection);
+
 
 signals:
+
 
 public slots:
 

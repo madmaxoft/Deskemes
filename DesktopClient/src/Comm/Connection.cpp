@@ -10,6 +10,7 @@
 
 Connection::Connection(
 	ComponentCollection & aComponents,
+	const QByteArray & aConnectionID,
 	QIODevice * aIO,
 	TransportKind aTransportKind,
 	const QString & aTransportName,
@@ -17,6 +18,7 @@ Connection::Connection(
 ):
 	Super(aParent),
 	mComponents(aComponents),
+	mConnectionID(aConnectionID),
 	mIO(aIO),
 	mTransportKind(aTransportKind),
 	mTransportName(aTransportName),
@@ -75,7 +77,12 @@ void Connection::setRemotePublicID(const QByteArray & aPublicID)
 	auto pairing = pairings->lookupDevice(mRemotePublicID.value());
 	if (pairing.isPresent())
 	{
-		// TODO
+		sendCleartextMessage("pubk"_4cc, pairing.value().mLocalPublicKeyData);
+	}
+	else
+	{
+		setState(csUnknownPairing);
+		emit unknownPairing(this);
 	}
 
 	checkRemotePublicKeyAndID();
@@ -96,6 +103,54 @@ void Connection::setRemotePublicKey(const QByteArray & aPubKeyData)
 
 
 
+void Connection::sendLocalPublicKey()
+{
+	assert(mState != csEncrypted);
+	assert(!mHasSentStartTls);
+
+	auto pairing = mComponents.get<DevicePairings>()->lookupDevice(mRemotePublicID.value());
+	assert(pairing.isPresent());
+
+	qDebug() << "Sending public key data";
+	sendCleartextMessage("pubk"_4cc, pairing.value().mLocalPublicKeyData);
+}
+
+
+
+
+
+void Connection::localPairingApproved()
+{
+	assert(
+		(mState == csUnknownPairing) ||
+		(mState == csKnownPairing) ||
+		(mState == csRequestedPairing) ||
+		(mState == csDifferentKey)
+	);
+	assert(!mHasSentStartTls);
+	assert(mRemotePublicID.isPresent());
+	assert(mRemotePublicKeyData.isPresent());
+	const auto & id = mRemotePublicID.value();
+	auto pairings = mComponents.get<DevicePairings>();
+	auto pairing = pairings->lookupDevice(id);
+	assert(pairing.isPresent());
+	assert(!pairing.value().mLocalPublicKeyData.isEmpty());
+	assert(!pairing.value().mLocalPrivateKeyData.isEmpty());
+
+	pairings->pairDevice(
+		id,
+		mRemotePublicKeyData.value(),
+		pairing.value().mLocalPublicKeyData,
+		pairing.value().mLocalPrivateKeyData
+	);
+
+	sendCleartextMessage("stls"_4cc);
+}
+
+
+
+
+
 void Connection::checkRemotePublicKeyAndID()
 {
 	if (!mRemotePublicID.isPresent() || !mRemotePublicKeyData.isPresent())
@@ -109,16 +164,27 @@ void Connection::checkRemotePublicKeyAndID()
 	auto pairing = pairings->lookupDevice(mRemotePublicID.value());
 	if (!pairing.isPresent())
 	{
+		// We don't have a record of this pairing, but the device does. Consider unpaired:
+		setState(csUnknownPairing);
+		emit unknownPairing(this);
+	}
+	else if (pairing.value().mDevicePublicKeyData.isEmpty())
+	{
+		// We've just decided to pair to this device, so we have our keypair, but haven't received the device's yet
+		// Consider unpaired yet:
 		setState(csUnknownPairing);
 		emit unknownPairing(this);
 	}
 	else if (pairing.value().mDevicePublicKeyData == mRemotePublicKeyData.value())
 	{
+		// Pairing matches, continue to TLS:
 		setState(csKnownPairing);
 		emit knownPairing(this);
+		sendCleartextMessage("stls"_4cc);
 	}
 	else
 	{
+		// Pairing with a different key, MITM attack? Let someone up decide:
 		setState(csDifferentKey);
 		emit differentKey(this);
 	}
@@ -131,7 +197,7 @@ void Connection::checkRemotePublicKeyAndID()
 void Connection::setState(Connection::State aNewState)
 {
 	mState = aNewState;
-	emit stateChanged(aNewState);
+	emit stateChanged(this, aNewState);
 }
 
 
@@ -290,7 +356,16 @@ void Connection::handleCleartextMessageDsms(const QByteArray & aMsg)
 
 void Connection::handleCleartextMessageStls()
 {
-	// TODO: Check if we have all the information needed
+	// Check if we have all the information needed
+	if (
+		!mRemotePublicID.isPresent() ||
+		!mRemotePublicKeyData.isPresent()
+	)
+	{
+		qDebug() << "Remote asked for TLS, but hasn't provided PublicID or PublicKey, aborting connection";
+		terminate();
+		return;
+	}
 
 	// If we didn't send the StartTls yet, do it now:
 	if (!mHasSentStartTls)

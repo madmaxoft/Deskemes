@@ -90,6 +90,7 @@ Database::DBConnection::DBConnection(Database & aParent):
 	mParent(aParent)
 {
 	mParent.mMtxConnection.lock();
+	mParent.mDatabase.transaction();
 }
 
 
@@ -98,6 +99,7 @@ Database::DBConnection::DBConnection(Database & aParent):
 
 Database::DBConnection::~DBConnection()
 {
+	mParent.mDatabase.commit();
 	mParent.mMtxConnection.unlock();
 }
 

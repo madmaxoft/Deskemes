@@ -6,13 +6,14 @@
 #include <QMutex>
 #include "ComponentCollection.hpp"
 #include "Device.hpp"
+#include "Comm/Connection.hpp"
 
 
 
 
 
 /** Manages all the devices known to the app. */
-class Devices:
+class DeviceMgr:
 	public QObject,
 	public ComponentCollection::Component<ComponentCollection::ckDevices>
 {
@@ -25,7 +26,7 @@ public:
 		using RuntimeError::RuntimeError;
 	};
 
-	Devices(ComponentCollection & aComponents);
+	DeviceMgr(ComponentCollection & aComponents);
 
 	/** Adds the specified device to the internal storage.
 	Throws a DeviceAlreadyPresentError if such a device with the same DeviceID already exists. */
@@ -46,7 +47,7 @@ protected:
 
 	/** All the devices, indexed by their DeviceID.
 	Protected against multithreaded access by mMtx. */
-	std::map<std::string, DevicePtr> mDevices;
+	std::map<QByteArray, DevicePtr> mDevices;
 
 	/** Protects mDevices against multithreaded access. */
 	mutable QMutex mMtx;
@@ -59,4 +60,11 @@ signals:
 
 	/** Emitted after a device was removed from the internal storage. */
 	void deviceRemoved(DevicePtr aDevice);
+
+
+public slots:
+
+	/** Notification from ConnectionMgr, a new connection has reached full connectivity (csEncrypted).
+	Either creates a new device for the connection, or adds the connection to an existing device. */
+	void newConnection(ConnectionPtr aConnection);
 };

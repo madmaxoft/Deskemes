@@ -178,7 +178,7 @@ set(SOURCES
 	src/ComponentCollection.cpp
 	src/DebugLogger.cpp
 	src/Device.cpp
-	src/Devices.cpp
+	src/DeviceMgr.cpp
 	src/InstallConfiguration.cpp
 	src/main.cpp
 	src/Settings.cpp
@@ -220,7 +220,7 @@ set(HEADERS
 	src/ComponentCollection.hpp
 	src/DebugLogger.hpp
 	src/Device.hpp
-	src/Devices.hpp
+	src/DeviceMgr.hpp
 	src/Exception.hpp
 	src/InstallConfiguration.hpp
 	src/Optional.hpp

@@ -57,7 +57,7 @@ private:
 	QBoxLayout * mDevicesLayout;
 
 	/** The infowidget for each known device, indexed by DeviceID. */
-	std::map<std::string, std::unique_ptr<WgtDevice>> mDeviceWidgets;
+	std::map<QByteArray, std::unique_ptr<WgtDevice>> mDeviceWidgets;
 
 
 	/** Adds the UI for the specified device. */

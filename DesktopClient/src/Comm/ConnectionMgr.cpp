@@ -1,5 +1,6 @@
 #include "ConnectionMgr.hpp"
 #include <cassert>
+#include "../DeviceMgr.hpp"
 
 
 
@@ -72,7 +73,7 @@ void ConnectionMgr::addConnection(std::shared_ptr<Connection> aConnection)
 	connect(aConnection.get(), &Connection::receivedPublicID,     this, &ConnectionMgr::connUpdateDetails);
 	connect(aConnection.get(), &Connection::receivedFriendlyName, this, &ConnectionMgr::connUpdateDetails);
 	connect(aConnection.get(), &Connection::receivedAvatar,       this, &ConnectionMgr::connUpdateDetails);
-	connect(aConnection.get(), &Connection::stateChanged,         this, &ConnectionMgr::connUpdateDetails);
+	connect(aConnection.get(), &Connection::stateChanged,         this, &ConnectionMgr::connStateChanged);
 
 	QMutexLocker lock(&mMtxConnections);
 	mConnections.push_back(aConnection);
@@ -161,5 +162,18 @@ void ConnectionMgr::connUpdateDetails(Connection * aConnection)
 			continue;
 		}
 		updateDetectedDevice(*d, *aConnection);
+	}
+}
+
+
+
+
+
+void ConnectionMgr::connStateChanged(Connection * aConnection)
+{
+	connUpdateDetails(aConnection);
+	if (aConnection->state() == Connection::csEncrypted)
+	{
+		emit newConnection(aConnection->shared_from_this());
 	}
 }

@@ -3,7 +3,7 @@
 #include <QLabel>
 #include "ui_WndDevices.h"
 #include "../Settings.hpp"
-#include "../Devices.hpp"
+#include "../DeviceMgr.hpp"
 #include "WgtDevice.hpp"
 #include "NewDeviceWizard.hpp"
 
@@ -19,13 +19,13 @@ WndDevices::WndDevices(ComponentCollection & aComponents, QWidget * aParent):
 	mUI->setupUi(this);
 	Settings::loadWindowPos("WndDevices", *this);
 
-	auto devs = mComponents.get<Devices>();
-	connect(devs.get(), &Devices::deviceAdded,   this, &WndDevices::onDeviceAdded);
-	connect(devs.get(), &Devices::deviceRemoved, this, &WndDevices::onDeviceRemoved);
+	auto mgr = mComponents.get<DeviceMgr>();
+	connect(mgr.get(), &DeviceMgr::deviceAdded,   this, &WndDevices::onDeviceAdded);
+	connect(mgr.get(), &DeviceMgr::deviceRemoved, this, &WndDevices::onDeviceRemoved);
 	connect(mUI->actDeviceNew, &QAction::triggered, this, &WndDevices::addNewDevice);
 
 	// Add devices already present:
-	for (const auto & dev: devs->devices())
+	for (const auto & dev: mgr->devices())
 	{
 		addDeviceUI(dev);
 	}

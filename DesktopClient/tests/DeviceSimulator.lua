@@ -4,7 +4,8 @@
 
 
 
-local shouldAnswerToDiscoveryOnly = true
+--- The following line, when uncommented, makes the simulator respond only to Discovery beacon broadcasts
+-- local shouldAnswerToDiscoveryOnly = true
 
 
 

@@ -80,6 +80,10 @@ protected:
 
 signals:
 
+	/** Emitted when a connection is fully established (csEncrypted).
+	Used by DeviceMgr to create / update devices. */
+	void newConnection(ConnectionPtr aConnection);
+
 
 public slots:
 
@@ -92,5 +96,9 @@ protected slots:
 
 	/** Updates the connection's device's details in all current detections. */
 	void connUpdateDetails(Connection * aConnection);
+
+	/** Updates the connection's device's details in all current detections,
+	and if the connection is fully established (csEncrypted), notifies the DeviceMgr. */
+	void connStateChanged(Connection * aConnection);
 };
 

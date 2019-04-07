@@ -17,7 +17,8 @@ The Connection object handles the base protocol (unauthenticated - TLS handshake
 The Connection also provides the transport name and kind that is shown to the user (text + icon).
 Each connection is uniquely identified by its EnumeratorID. */
 class Connection:
-	public QObject
+	public QObject,
+	public std::enable_shared_from_this<Connection>
 {
 	using Super = QObject;
 	Q_OBJECT

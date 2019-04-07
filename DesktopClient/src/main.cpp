@@ -9,7 +9,7 @@
 #include "ComponentCollection.hpp"
 #include "DebugLogger.hpp"
 #include "Device.hpp"
-#include "Devices.hpp"
+#include "DeviceMgr.hpp"
 #include "InstallConfiguration.hpp"
 #include "Settings.hpp"
 #include "DB/DatabaseBackup.hpp"
@@ -112,7 +112,7 @@ int main(int argc, char *argv[])
 		ComponentCollection cc;
 		cc.addComponent(instConf);
 		auto mainDB      = cc.addNew<Database>(cc);
-		auto devs        = cc.addNew<Devices>(cc);
+		auto devMgr      = cc.addNew<DeviceMgr>(cc);
 		auto connMgr     = cc.addNew<ConnectionMgr>(cc);
 		auto broadcaster = cc.addNew<UdpBroadcaster>(cc);
 		auto listener    = cc.addNew<TcpListener>(cc);
@@ -120,7 +120,7 @@ int main(int argc, char *argv[])
 		auto blacklist   = cc.addNew<DeviceBlacklist>(cc);
 
 		// Connect the main objects together:
-		// TODO
+		app.connect(connMgr.get(), &ConnectionMgr::newConnection, devMgr.get(), &DeviceMgr::newConnection);
 
 		// Load the DB:
 		auto dbFile = instConf->dbFileName();

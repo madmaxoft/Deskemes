@@ -53,6 +53,7 @@ public:
 		csBlacklisted,       ///< The device's public ID is in the blacklist
 		csDifferentKey,      ///< The device's public key is different from the last time we paired (MITM?)
 		csEncrypted,         ///< The connection is in the encrypted phase
+		csDisconnected,      ///< The connection has been disconnected (but is kept for housekeeping)
 	};
 
 
@@ -285,7 +286,8 @@ public:
 		ERR_SERVICE_INIT_FAILED = 4,
 		ERR_NO_PERMISSION = 5,
 		ERR_NOT_YET = 6,
-		ERR_NO_REQUEST_ID = 7,   ///> Internal comm error - there is no free RequestID to send this request (Ch0)
+		ERR_NO_REQUEST_ID = 7,   ///> Internal comm error: There is no free RequestID to send this request (Ch0)
+		ERR_DISCONNECTED = 8,    ///> Internal comm error: The connection has been disconnected
 	};
 
 	/** Creates a new instance, bound to the specified connection. */

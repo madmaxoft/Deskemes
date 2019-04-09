@@ -30,6 +30,24 @@ public:
 	}
 
 
+
+
+	virtual ~ChannelZero() override
+	{
+		// Stop the ping-timer:
+		mTimer.stop();
+
+		// Call the failure handler of each pending request:
+		QMutexLocker lock(&mMtx);
+		for (auto & req: mPendingRequests)
+		{
+			(*req.second).mErrorHandler(ERR_DISCONNECTED, "The connection was lost");
+		}
+	}
+
+
+
+
 protected:
 
 	/** Storage for a request while it is being serviced by the remote.
@@ -815,5 +833,9 @@ void Connection::ioReadyRead()
 void Connection::ioClosing()
 {
 	qDebug() << "Disconnected";
+	setState(csDisconnected);
 	emit disconnected(this);
+
+	// Clear all channels only after notifying "disconnected", in case client has some data in the channels
+	mChannels.clear();
 }

@@ -6,11 +6,21 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>242</width>
+    <width>257</width>
     <height>373</height>
    </rect>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
+   <item>
+    <widget class="QLabel" name="lblFriendlyName">
+     <property name="toolTip">
+      <string>The device's name, as set in the app</string>
+     </property>
+     <property name="text">
+      <string notr="true">TextLabel</string>
+     </property>
+    </widget>
+   </item>
    <item>
     <widget class="QLabel" name="lblDesktopImage">
      <property name="sizePolicy">

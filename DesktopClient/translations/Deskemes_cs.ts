@@ -266,6 +266,10 @@ Check that the key displayed here matches the key displayed on your device.</sou
         <source>Calendar</source>
         <translation type="unfinished"></translation>
     </message>
+    <message>
+        <source>The device&apos;s name, as set in the app</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>WndDevices</name>

@@ -34,7 +34,12 @@ public:
 
 	std::vector<ConnectionPtr> connections() const { return mConnections; }
 
+	/** Adds the specified connection to the list of connections, and starts monitoring it for activity. */
 	void addConnection(ConnectionPtr aConnection);
+
+	/** Returns the friendly name received from the device.
+	Returns an empty string if there are no connections. */
+	const QString & friendlyName() const;
 
 
 protected:

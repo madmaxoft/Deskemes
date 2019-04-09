@@ -34,6 +34,9 @@ void writeBE16Lstring(QByteArray & aDest, const QByteArray & aValue);
 /** Reads 2 bytes out of aBytes starting at the specified index and returns the big-endian value they represent. */
 quint16 readBE16(const QByteArray & aData, int aIndex = 0);
 
+/** Reads 4 bytes out of aBytes starting at the specified index and returns the big-endian value they represent. */
+quint32 readBE32(const QByteArray & aData, int aIndex = 0);
+
 
 
 

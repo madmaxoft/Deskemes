@@ -88,10 +88,17 @@ void writeBE16Lstring(QByteArray & aDest, const QByteArray & aValue)
 quint16 readBE16(const QByteArray & aData, int aIndex)
 {
 	assert(aData.size() >= aIndex + 1);
-	return (
-		static_cast<quint16>(static_cast<quint8>(aData[aIndex]) << 8) |
-		static_cast<quint16>(static_cast<quint8>(aData[aIndex + 1]))
-			);
+	return readBE16(reinterpret_cast<const quint8 *>(aData.constData()) + aIndex);
+}
+
+
+
+
+
+quint32 readBE32(const QByteArray & aData, int aIndex)
+{
+	assert(aData.size() >= aIndex + 3);
+	return readBE32(reinterpret_cast<const quint8 *>(aData.constData()) + aIndex);
 }
 
 }  // namespace Utils

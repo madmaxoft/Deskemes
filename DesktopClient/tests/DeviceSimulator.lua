@@ -4,18 +4,31 @@
 
 
 
---- The following line, when uncommented, makes the simulator respond only to Discovery beacon broadcasts
--- local shouldAnswerToDiscoveryOnly = true
+--- The following value, when set to true, makes the simulator respond only to Discovery beacon broadcasts
+local shouldAnswerToDiscoveryOnly = false
 
 
 
 
 
 local socket = require("socket")
-local Device = {
-	mSocket = nil
-}
+
+--- Will contain the avatar read from file "Simulator.png", if it exists
 local avatar
+
+
+
+
+
+-- Common error codes:
+local ERR_UNSUPPORTED_REQTYPE = 1
+local ERR_NO_SUCH_SERVICE = 2
+local ERR_NO_CHANNEL_ID = 3
+local ERR_SERVICE_INIT_FAILED = 4
+local ERR_NO_PERMISSION = 5
+local ERR_NOT_YET = 6
+local ERR_NO_REQUEST_ID = 7
+
 
 
 
@@ -58,6 +71,192 @@ local function toHex(aStr)
 			return hexChar[highNibble] .. hexChar[b - 16 * highNibble]
 		end
 	)
+end
+
+
+
+
+
+-------------------------------------------------------------------------------------------------------------
+-- Channel class:
+
+-- The implementation of a single mux-protocol channel in a device
+local Channel =
+{
+	-- The Device instance for which the channel is created
+	mDevice = nil,
+
+	-- The ChannelID within the mux protocol for this channel
+	mID = -1,
+
+	-- Function that is called to process messages incoming on the channel
+	handleMessage = nil,
+}
+
+
+
+
+
+function Channel:new(aObj)
+	aObj = aObj or {}
+	setmetatable(aObj, self)
+	self.__index = self
+	return aObj
+end
+
+
+
+
+
+--- Sends the specified message to the remote on this muxed channel
+function Channel:sendMessage(aMsg)
+	assert(type(self) == "table")
+	assert(type(self.mDevice) == "table")
+
+	self.mDevice:sendMuxMessage(self.mID, aMsg)
+end
+
+
+
+
+
+-------------------------------------------------------------------------------------------------------------
+-- ChannelZero class:
+local ChannelZero = Channel:new()
+
+
+
+
+
+--- Handles the message coming in to the command channel
+-- Hands off the processing to handleRequest(), handleResponse() or handleError() based on message type
+function ChannelZero:handleMessage(aMsg)
+	assert(type(self) == "table")
+	assert(type(aMsg) == "string")
+
+	local len = #aMsg
+	if (len < 4) then
+		error("Message too short")
+	end
+
+	local msgType = string.byte(aMsg, 1)
+	local reqID = string.byte(aMsg, 2)
+	if (msgType == 0) then
+		-- Request
+		if (len < 6) then
+			error("Request message too short")
+		end
+		local reqType = string.sub(aMsg, 3, 6)
+		return self:handleRequest(reqType, reqID, string.sub(aMsg, 7))
+	elseif (msgType == 1) then
+		-- Response
+		-- TODO
+	elseif (msgType == 2) then
+		-- Error
+		print("Received an error response:")
+		print("\tReqID = " .. string.byte(aMsg, 2))
+		print("\tErrorCode = " .. readBE16(aMsg, 3))
+		print("\tData = " .. string.sub(aMsg, 5))
+	else
+		error("Unknown message type")
+	end
+end
+
+
+
+
+
+local numSuccessfulPings = 0
+
+--- Handles the request received from the remote
+function ChannelZero:handleRequest(aRequestType, aRequestID, aAdditionalData)
+	assert(type(self) == "table")
+	assert(type(aRequestType) == "string")
+	assert(type(aRequestID) == "number")
+	assert(type(aAdditionalData or "") == "string")
+
+	if (aRequestType == "ping") then
+		print("Received a Ch0 ping " .. aRequestID .. " / " .. aAdditionalData)
+		if (numSuccessfulPings > 10) then
+			print("Sending an Error response")
+			numSuccessfulPings = 0
+			self:sendError(aRequestID, 1000, "Random error")
+		else
+			numSuccessfulPings = numSuccessfulPings + 1
+			self:sendResponse(aRequestID, aAdditionalData)
+		end
+	elseif (aRequestType == "open") then
+		-- TODO
+	elseif (aRequestType == "clse") then
+		-- TODO
+	else
+		self:sendError(aRequestID, ERR_UNSUPPORTED_REQTYPE, "The request type \"" .. aRequestType .. "\" is not supported")
+	end
+end
+
+
+
+
+
+--- Sends a Success response to the remote
+function ChannelZero:sendResponse(aRequestID, aAdditionalData)
+	assert(type(self) == "table")
+	assert(type(aRequestID) == "number")
+	assert(type(aAdditionalData or "") == "string")
+
+	self:sendMessage(string.char(1) .. string.char(aRequestID) .. (aAdditionalData or ""))
+end
+
+
+
+
+
+--- Sends an Error response to the remote
+function ChannelZero:sendError(aRequestID, aErrorCode, aMessage)
+	assert(type(self) == "table")
+	assert(type(aRequestID) == "number")
+	assert(type(aErrorCode) == "number")
+	assert(type(aMessage or "") == "string")
+
+	self:sendMessage(string.char(2) .. string.char(aRequestID) .. writeBE16(aErrorCode) .. aMessage)
+end
+
+
+
+
+
+-------------------------------------------------------------------------------------------------------------
+-- Device class:
+
+--- The implementation of the simulated device
+local Device =
+{
+	-- The socket used for communication
+	mSocket = nil,
+
+	-- The incoming data, buffered until a complete protocol message is present
+	mIncomingData = nil,
+
+	-- The function that handles incoming data.
+	-- Starts as Device:extractProcessCleartextMessage(), then is substituted to Device:extractProcessMuxMessage() once TLS is reached
+	extractProcessMessage = nil,
+
+	-- Map of ChannelID -> Channel instance for all currently open channels
+	mChannels = {},
+}
+
+
+
+
+
+--- Creates a new instance of a Device class
+function Device:new(aObj)
+	aObj = aObj or {}
+	aObj.mChannels = aObj.mChannels or {}
+	aObj.mChannels[0] = Channel:new(aObj.mChannels[0])
+	setmetatable(aObj, self)
+	self.__index = self
+	return aObj
 end
 
 
@@ -130,7 +329,8 @@ function Device:processCleartextMessage(aMsgType, aMsgData)
 		end
 		self.mRemotePublicKey = aMsgData
 
-		socket.select(nil, nil, 1)  -- Wait 1 second
+		-- socket.select(nil, nil, 1)  -- Wait 1 second
+
 		print("Sending our (dummy) public key")
 		self:sendCleartextMessage("pubk", "DummySimulatorPublicKeyData")
 		--[[
@@ -143,9 +343,13 @@ function Device:processCleartextMessage(aMsgType, aMsgData)
 			error("The remote is starting TLS without a public key")
 		end
 
-		socket.select(nil, nil, 1)  -- Wait 1 second
+		-- socket.select(nil, nil, 1)  -- Wait 1 second
+
 		print("Starting TLS, too")
 		self:sendCleartextMessage("stls")
+
+		-- TODO: TLS
+		self:switchToMuxProtocol()
 	end
 end
 
@@ -153,7 +357,64 @@ end
 
 
 
---- Tries to extract a single cleartext message, and send it to processing
+function Device:switchToMuxProtocol()
+	assert(type(self) == "table")
+	assert(type(self.mChannels) == "table")
+
+	self.extractProcessMessage = self.extractProcessMuxMessage
+	self.mChannels[0] = ChannelZero:new({mDevice = self, mID = 0})
+end
+
+
+
+
+
+--- Processes a single mux-protocol message sent to the specified channel
+function Device:processMuxChannelMessage(aChannelID, aMsg)
+	assert(type(self) == "table")
+	assert(type(aChannelID) == "number")
+	assert(type(aMsg) == "string")
+
+	local channel = self.mChannels[aChannelID]
+	if not(channel) then
+		error("Received a mux-message for non-existent channel " .. aChannelID)
+		return
+	end
+
+	channel:handleMessage(aMsg)
+end
+
+
+
+
+
+--- Tries to extract a single mux-protocol message, and send it to processing
+-- Returns true if extracted a message, false if not
+function Device:extractProcessMuxMessage()
+	assert(type(self) == "table")
+	assert(type(self.mIncomingData) == "string")
+
+	local len = #(self.mIncomingData)
+	if (len < 4) then
+		-- Not enough data for even an empty message
+		return false
+	end
+	local dataLen = readBE16(self.mIncomingData, 3)
+	if (len < dataLen + 4) then
+		-- Not a complete message yet
+		return false
+	end
+	local channelID = readBE16(self.mIncomingData, 1)
+	self:processMuxChannelMessage(channelID, string.sub(self.mIncomingData, 5, 4 + dataLen))
+	self.mIncomingData = string.sub(self.mIncomingData, 5 + dataLen)
+	return true
+end
+
+
+
+
+
+--- Tries to extract a single cleartext-protocol message, and send it to processing
 -- Returns true if extracted a message, false if not
 function Device:extractProcessCleartextMessage()
 	assert(type(self) == "table")
@@ -198,8 +459,11 @@ function Device:connect(aIP, aTcpPort, aBeaconPublicID)
 	self.mSocket:settimeout(0.1)
 	print("Connected, processing...")
 	self.mIncomingData = ""
+	self.extractProcessMessage = self.extractProcessCleartextMessage  -- Initial protocol is the Cleartext
 	while (true) do
-		local data, err, partial = self.mSocket:receive(100)
+
+		-- Read the data from the socket:
+		local data, err, partial = self.mSocket:receive(30)
 		if not(data) then
 			if (err == "timeout") then
 				data = partial
@@ -215,9 +479,11 @@ function Device:connect(aIP, aTcpPort, aBeaconPublicID)
 				return
 			end
 		end
+
+		-- Store and process the data:
 		if (data ~= "") then
 			self.mIncomingData = self.mIncomingData .. data
-			while (self:extractProcessCleartextMessage()) do
+			while (self:extractProcessMessage()) do
 				-- Empty loop body on purpose
 			end
 		end
@@ -227,6 +493,25 @@ end
 
 
 
+
+--- Sends the specified message to the remote on this muxed channel
+function Device:sendMuxMessage(aChannelID, aMsg)
+	assert(type(self) == "table")
+	assert(type(aChannelID) == "number")
+	assert(type(aMsg or "") == "string")
+
+	local len = #aMsg
+	assert(len < 65536)
+
+	self.mSocket:send(writeBE16(aChannelID) .. writeBE16(len) .. aMsg)
+end
+
+
+
+
+
+-------------------------------------------------------------------------------------------------------------
+-- main:
 
 -- If the Simulator.png file exists, load its contents:
 local f = io.open("Simulator.png", "rb")
@@ -275,7 +560,9 @@ while (true) do
 	if (shouldAnswerToDiscoveryOnly and not(isDiscovery)) then
 		print("Ignoring a non-discovery beacon")
 	else
-		Device:connect(fromIP, tcpPort, publicID)
+		local dev = Device:new()
+		dev:connect(fromIP, tcpPort, publicID)
+		-- The device has done all its work in connect(), so now it's disconnected again
 		print("Device not connected")
 	end
 

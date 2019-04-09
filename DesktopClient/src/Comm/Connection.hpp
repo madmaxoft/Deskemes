@@ -3,6 +3,7 @@
 #include <memory>
 #include <QObject>
 #include <QIODevice>
+#include <QMutex>
 #include "../Optional.hpp"
 #include "../ComponentCollection.hpp"
 
@@ -25,6 +26,15 @@ class Connection:
 
 
 public:
+
+	/** Base class for all comm channels muxed by the Connection (in csEncrypted state).
+	Each descendant implements a specific channel protocol (such as filesystem access, information, phonebook, messages etc.)
+	A channel uses the parent Connection's sendChannelMessage() function to send data to the app.
+	The Connection calls the processIncomingMessage() function when a new message arrives for the channel over the connection. */
+	class Channel;
+
+	using ChannelPtr = std::shared_ptr<Channel>;
+
 
 	enum TransportKind
 	{
@@ -96,6 +106,9 @@ public:
 	Stores the pairing in DevicePairings and sends the StartTLS request to the device. */
 	Q_INVOKABLE void localPairingApproved();
 
+	/** Sends the specified message through the connection to the remote channel specified.
+	Asserts that the connection is csEncrypted. */
+	void sendChannelMessage(const Channel * aChannel, const QByteArray & aMessage);
 
 protected:
 
@@ -145,6 +158,13 @@ protected:
 	No more cleartext messages are allowed to be sent from us. */
 	bool mHasSentStartTls;
 
+	/** Channels that have been opened on the csEncrypted connection.
+	Protected against multithreaded access by mMtxChannels. */
+	std::map<quint16, ChannelPtr> mChannels;
+
+	/** The mutex protecting mChannels against multithreaded access. */
+	QMutex mMtxChannels;
+
 
 	/** Checks whether the remote public key and ID pair is known.
 	If either is missing, silently bails out.
@@ -176,6 +196,13 @@ protected:
 
 	/** Sends the specified message over to the remote peer. */
 	void sendCleartextMessage(quint32 aMsgType, const QByteArray & aMsg = QByteArray());
+
+	/** Extracts a complete mux protocol (tls) message from mIncomingData, and distributes it to the proper channel.
+	Returns true if a complete message was extracted, false if there's no complete message. */
+	bool extractAndHandleMuxMessage();
+
+	/** Returns the channel identified by its ID, or nullptr if no such channel. */
+	ChannelPtr channelByID(quint16 aChannelID);
 
 
 signals:
@@ -232,3 +259,55 @@ private slots:
 using ConnectionPtr = std::shared_ptr<Connection>;
 
 Q_DECLARE_METATYPE(ConnectionPtr);
+
+
+
+
+
+class Connection::Channel:
+	public QObject,
+	public std::enable_shared_from_this<Connection::Channel>
+{
+	using super = QObject;
+
+	Q_OBJECT
+
+
+public:
+
+	/** Basic error codes */
+	enum
+	{
+		ERR_UNSUPPORTED_REQTYPE = 1,
+		ERR_NO_SUCH_SERVICE = 2,
+		ERR_NO_CHANNEL_ID = 3,
+		ERR_SERVICE_INIT_FAILED = 4,
+		ERR_NO_PERMISSION = 5,
+		ERR_NOT_YET = 6,
+		ERR_NO_REQUEST_ID = 7,   ///> Internal comm error - there is no free RequestID to send this request (Ch0)
+	};
+
+	/** Creates a new instance, bound to the specified connection. */
+	explicit Channel(Connection & aConnection, quint16 aChannelID):
+		mConnection(aConnection),
+		mChannelID(aChannelID)
+	{
+	}
+
+	// Simple getters:
+	Connection & connection() const { return mConnection; }
+	quint16 channelID() const { return mChannelID; }
+
+	/** Called by the parent connection when a new message arrives for the channel from the device.
+	Descendants use this to implement the receiving side of the protocol. */
+	virtual void processIncomingMessage(const QByteArray & aMessage) = 0;
+
+
+protected:
+
+	/** The connection in which the channel lives. */
+	Connection & mConnection;
+
+	/** The channel ID used in the connection for this channel. */
+	quint16 mChannelID;
+};

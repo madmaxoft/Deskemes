@@ -1,5 +1,7 @@
 #include "Connection.hpp"
 #include <cassert>
+#include <QTimer>
+#include <QDateTime>
 #include "../InstallConfiguration.hpp"
 #include "../Utils.hpp"
 #include "../DB/DevicePairings.hpp"
@@ -7,6 +9,293 @@
 
 
 
+
+////////////////////////////////////////////////////////////////////////////////
+// ChannelZero:
+
+/** The implementation of the special channel zero - the one that manages all the other channels. */
+class ChannelZero:
+	public Connection::Channel
+{
+	using Super = Connection::Channel;
+
+public:
+
+	ChannelZero(Connection & aConnection, quint16 aID):
+		Super(aConnection, aID)
+	{
+		// Add a ping-timer
+		connect(&mTimer, &QTimer::timeout, this, &ChannelZero::sendPing);
+		mTimer.start(1000);  // 1 second
+	}
+
+
+protected:
+
+	/** Storage for a request while it is being serviced by the remote.
+	Stays in mPendingRequests until a Response or an Error for it arrive. */
+	struct PendingRequest
+	{
+		using SuccessHandler = std::function<void(const QByteArray & aAdditionalData)>;
+		using ErrorHandler = std::function<void(const quint16 aErrorCode, const QByteArray & aErrorMsg)>;
+
+		quint8 mRequestID;
+		SuccessHandler mSuccessHandler;
+		ErrorHandler mErrorHandler;
+
+		PendingRequest(
+			quint8 aRequestID,
+			SuccessHandler aSuccessHandler,
+			ErrorHandler aErrorHandler
+		):
+			mRequestID(aRequestID),
+			mSuccessHandler(aSuccessHandler),
+			mErrorHandler(aErrorHandler)
+		{
+		}
+	};
+
+
+	/** The requests that have been sent to the remote and haven't been answered yet.
+	Protected against multithreaded access by mMtx. */
+	std::map<quint8, std::unique_ptr<PendingRequest>> mPendingRequests;
+
+	/** The mutex protecting mPendingRequests against multithreaded access. */
+	QMutex mMtx;
+
+
+	// Channel override:
+	virtual void processIncomingMessage(const QByteArray & aMessage) override
+	{
+		if (aMessage.size() < 2)
+		{
+			qWarning() << "Message too small: " << aMessage.size();
+			return;
+		}
+		switch (aMessage[0])
+		{
+			case 0x00:
+			{
+				handleRequest(aMessage);
+				break;
+			}
+			case 0x01:
+			{
+				handleResponse(aMessage);
+				break;
+			}
+			case 0x02:
+			{
+				handleError(aMessage);
+				break;
+			}
+			default:
+			{
+				qWarning() << "Unhandled message request type: " << static_cast<int>(aMessage[0]);
+				break;
+			}
+		}
+	}
+
+
+
+	/** Handles a Request message from the remote.
+	The aMessage contains the entire serialized message (incl. MsgType, ReqID and ReqType).*/
+	void handleRequest(const QByteArray & aMessage)
+	{
+		if (aMessage.size() < 6)
+		{
+			qWarning() << "Request too small: " << aMessage.size();
+			return;
+		}
+		auto reqID = static_cast<quint8>(aMessage[1]);
+		auto reqType = Utils::readBE32(aMessage, 2);
+		switch (reqType)
+		{
+			case "ping"_4cc:
+			{
+				sendResponse(reqID, aMessage.mid(6));
+				break;
+			}
+			// "open" and "clse" requests are not supported, handled in "default"
+			default:
+			{
+				qWarning() << "Unsupported request received: " << Utils::writeBE32(reqType);
+				sendError(reqID, ERR_UNSUPPORTED_REQTYPE);
+				break;
+			}
+		}
+	}
+
+
+
+	/** Handles a Response message from the remote.
+	The aMessage contains the entire serialized message (incl. MsgType and ReqID). */
+	void handleResponse(const QByteArray & aMessage)
+	{
+		if (aMessage.size() < 2)
+		{
+			qWarning() << "Response too small: " << aMessage.size();
+			return;
+		}
+		auto requestID = static_cast<quint8>(aMessage[1]);
+		QMutexLocker lock(&mMtx);
+		auto itr = mPendingRequests.find(requestID);
+		if (itr == mPendingRequests.end())
+		{
+			qWarning() << "Received a response for a non-existent request ID " << requestID;
+			return;
+		}
+		auto req = std::move(itr->second);
+		mPendingRequests.erase(itr);
+		lock.unlock();
+		req->mSuccessHandler(aMessage.mid(2));
+	}
+
+
+
+	/** Handles an Error message from the remote.
+	The aMessage contains the entire serialized message (incl. MsgType and ReqID). */
+	void handleError(const QByteArray & aMessage)
+	{
+		if (aMessage.size() < 4)
+		{
+			qWarning() << "Response too small: " << aMessage.size();
+			return;
+		}
+		auto requestID = static_cast<quint8>(aMessage[1]);
+		auto errorCode = Utils::readBE16(aMessage, 2);
+		QMutexLocker lock(&mMtx);
+		auto itr = mPendingRequests.find(requestID);
+		if (itr == mPendingRequests.end())
+		{
+			qWarning() << "Received an error response for a non-existent request ID " << requestID;
+			return;
+		}
+		auto req = std::move(itr->second);
+		mPendingRequests.erase(itr);
+		lock.unlock();
+		req->mErrorHandler(errorCode, aMessage.mid(4));
+	}
+
+
+	/** Sends a success response to a previous request to the remote. */
+	void sendResponse(const quint8 aRequestID, const QByteArray & aMsgData = QByteArray())
+	{
+		QByteArray buf;
+		buf.push_back(0x01);
+		buf.push_back(static_cast<char>(aRequestID));
+		buf.append(aMsgData);
+		mConnection.sendChannelMessage(this, buf);
+	}
+
+
+	/** Sends an error response to a previous request to the remote. */
+	void sendError(
+		const quint8 aRequestID,
+		const quint16 aErrorCode,
+		const QByteArray & aMsgData = QByteArray()
+	)
+	{
+		QByteArray buf;
+		buf.push_back(0x02);
+		buf.push_back(static_cast<char>(aRequestID));
+		Utils::writeBE16(buf, aErrorCode);
+		buf.append(aMsgData);
+		mConnection.sendChannelMessage(this, buf);
+	}
+
+
+	/** Sends a request and calls the specified handler when response or error is received.
+	Automatically assigns a request ID.
+	The error handler is called immediately if there's no free request IDs, with ERR_NO_REQUEST_ID. */
+	void sendRequest(
+		const quint32 aRequestType,
+		PendingRequest::SuccessHandler aSuccessHandler,
+		std::function<void(const quint16 aErrorCode, const QByteArray & aErrorMsg)> aErrorHandler,
+		const QByteArray & aAdditionalData = QByteArray()
+	)
+	{
+		QMutexLocker lock(&mMtx);
+		if (mPendingRequests.size() >= 255)
+		{
+			lock.unlock();
+			aErrorHandler(ERR_NO_REQUEST_ID, "Too many pending requests, no free ID to assign to this one.");
+			return;
+		}
+
+		// Find a free request ID to assign:
+		quint8 reqID = 255;
+		for (quint8 i = 0; i < 255; i++)
+		{
+			if (mPendingRequests.find(i) == mPendingRequests.end())
+			{
+				reqID = i;
+				break;
+			}
+		}
+
+		// Store the pending request:
+		mPendingRequests[reqID] = std::make_unique<PendingRequest>(
+			reqID,
+			aSuccessHandler,
+			aErrorHandler
+		);
+		lock.unlock();
+
+		// Serialize and send the request:
+		qDebug() << "Sending request ID " << reqID << ", data = " << aAdditionalData;
+		QByteArray req;
+		req.push_back('\0');  // Request
+		req.push_back(static_cast<char>(reqID));
+		Utils::writeBE32(req, aRequestType);
+		req.append(aAdditionalData);
+		mConnection.sendChannelMessage(this, req);
+	}
+
+
+	/** Called when a ping's response is received, with the calculated roundtrip time. */
+	void pingReceived(qint64 aRoundtripMsec)
+	{
+		qDebug() << "Ping received in " << aRoundtripMsec << " msec";
+	}
+
+
+private slots:
+
+	void sendPing()
+	{
+		static int numPings = 0;
+		auto now = QDateTime::currentMSecsSinceEpoch();
+		qDebug() << "Sending ping " << numPings;
+		sendRequest(
+			"ping"_4cc,
+			[this, now](const QByteArray & aAdditionalData)
+			{
+				qDebug() << "Ping received in " << QDateTime::currentMSecsSinceEpoch() - now << " msec; ID = " << aAdditionalData;
+				this->pingReceived(QDateTime::currentMSecsSinceEpoch() - now);
+			},
+			[](const quint16 aErrorCode, const QByteArray & aErrorMessage)
+			{
+				qDebug() << "Ping request returned an error: " << aErrorCode << "; " << aErrorMessage;
+			},
+			QString::number(numPings++).toUtf8()
+		);
+	}
+
+
+protected:
+
+	/** The timer used for pinging. */
+	QTimer mTimer;
+};
+
+
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+// Connection:
 
 Connection::Connection(
 	ComponentCollection & aComponents,
@@ -151,6 +440,21 @@ void Connection::localPairingApproved()
 
 
 
+void Connection::sendChannelMessage(const Connection::Channel * aChannel, const QByteArray & aMessage)
+{
+	QByteArray buf;
+	Utils::writeBE16(buf, aChannel->channelID());
+	Utils::writeBE16Lstring(buf, aMessage);
+
+	// TODO: TLS
+
+	mIO->write(buf);
+}
+
+
+
+
+
 void Connection::checkRemotePublicKeyAndID()
 {
 	if (!mRemotePublicID.isPresent() || !mRemotePublicKeyData.isPresent())
@@ -228,7 +532,16 @@ void Connection::processIncomingData(const QByteArray & aData)
 
 		case csEncrypted:
 		{
-			// TODO: TLS Mux
+			// TODO: TLS
+
+			// Add the data to the internal buffer:
+			mIncomingData.append(aData);
+
+			// Extract all complete messages:
+			while (extractAndHandleMuxMessage())
+			{
+				// Empty loop body
+			}
 			break;
 		}
 	}
@@ -378,6 +691,9 @@ void Connection::handleCleartextMessageStls()
 
 	setState(csEncrypted);
 
+	// Set up the command channel:
+	mChannels[0] = std::make_shared<ChannelZero>(*this, 0);
+
 	// Push the leftover data to the TLS filter:
 	QByteArray leftoverData;
 	std::swap(leftoverData, mIncomingData);
@@ -404,6 +720,49 @@ void Connection::sendCleartextMessage(quint32 aMsgType, const QByteArray & aMsg)
 	{
 		mHasSentStartTls = true;
 	}
+}
+
+
+
+
+
+bool Connection::extractAndHandleMuxMessage()
+{
+	if (mIncomingData.size() < 4)
+	{
+		// Not enough data for the header
+		return false;
+	}
+	auto msgLen = static_cast<qint32>(Utils::readBE16(mIncomingData, 2));
+	if (mIncomingData.size() < msgLen + 4)
+	{
+		return false;
+	}
+	auto channelID = Utils::readBE16(mIncomingData, 0);
+	auto channel = channelByID(channelID);
+	if (channel == nullptr)
+	{
+		qWarning() << "Message received for non-existent channel " << channelID;
+		return true;
+	}
+	channel->processIncomingMessage(mIncomingData.mid(4, msgLen));
+	mIncomingData = mIncomingData.mid(4 + msgLen);
+	return true;
+}
+
+
+
+
+
+Connection::ChannelPtr Connection::channelByID(quint16 aChannelID)
+{
+	QMutexLocker lock(&mMtxChannels);
+	auto itr = mChannels.find(aChannelID);
+	if (itr == mChannels.end())
+	{
+		return nullptr;
+	}
+	return itr->second;
 }
 
 

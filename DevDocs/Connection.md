@@ -148,39 +148,36 @@
 
 ## Channel 0 messages
 
-  Channel 0 is reserved as the "main channel" that takes commands and opens and closes other channels, as requested. Each channel has a specific kind that dictates the data format. The data sent on Channel 0 uses a request-response protocol: Either peer can send a request; request are paired to their responses using single-byte IDs, so that a peer can, theoretically, send multiple requests and only then process all the responses at once. If a request causes an error, an Error response is sent instead of a regular Response. The messages have the following format:
+  Channel 0 is reserved as the "main channel" that takes commands and opens and closes other channels, as requested. Each channel is handled by a specific service that dictates the protocol used on that channel (documented in separate files). The data sent on Channel 0 uses a request-response protocol: Either peer can send a request; requests are paired to their responses using single-byte IDs, so that a peer can, theoretically, send multiple requests and only then process all the responses at once. If a request causes an error, an Error response is sent instead of a regular Response. The messages have the following format:
 
   Request:
 
 | Data      | Type    | Notes                                                |
 | --------- | ------- | ---------------------------------------------------- |
-| MsgType   | 0x00    | This is a request                                    |
+| MsgType   | uint8   | 0x00 - This is a request                             |
 | RequestID | uint8   | The ID of the request                                |
 | ReqType   | 4 bytes | The type of the request (what data is it requesting) |
-| MsgLen    | uint16  | The length of MsgData (MSB first)                    |
-| MsgData   | bytes   | Additional request data                              |
+| AddData   | bytes   | Additional request data                              |
 
   Response:
 
 | Data      | Type   | Notes                                          |
 | --------- | ------ | ---------------------------------------------- |
-| MsgType   | 0x01   | This is a response                             |
+| MsgType   | uint8  | 0x01 - This is a response                      |
 | RequestID | uint8  | The ID of the request this response belongs to |
-| MsgLen    | uint16 | The length of MsgData (MSB first)              |
-| MsgData   | bytes  | The response data                              |
+| AddData   | bytes  | The response data                              |
 
   Error:
 
 | Data      | Type   | Notes                                                     |
 | --------- | ------ | --------------------------------------------------------- |
-| MsgType   | 0x02   | This is an error report                                   |
+| MsgType   | uint8  | 0x02 - This is an error report                            |
 | RequestID | uint8  | The ID of the request this response belongs to            |
 | ErrorCode | uint16 | The numerical error code (MSB first, list of codes below) |
-| MsgLen    | uint16 | The length of MsgData (MSB first)                         |
-| MsgData   | string | The error message (UTF-8; potentially user-visible)       |
+| AddData   | string | The error message (UTF-8; potentially user-visible)       |
 
 
-The numbers are sent big-endian - MSB first. The ReqType is a 4-byte identifier of what data is requested (list of request types is down below). A request can have an additional data. A response has a similar format but doesn't repeat the ReqType. Data length for each packet is capped at 64 KiB - 12 (so that the entire message fits into a single mux message); the assumption is that this is enough for all messages; no particular fragmentation scheme is specified. If a specified ReqType is not supported by the receiver, it sends an Error response with the error code `ERR_UNSUPPORTED_REQTYPE`.
+The numbers are sent big-endian - MSB first. The ReqType is a 4-byte identifier of what data is requested (list of request types is down below). A request can have an additional data. A response has a similar format but doesn't repeat the ReqType. Data length for each packet is capped at 64 KiB - 10 (so that the entire message fits into a single mux message); the assumption is that this is enough for all messages; no particular fragmentation scheme is specified. If a specified ReqType is not supported by the receiver, it sends an Error response with the error code `ERR_UNSUPPORTED_REQTYPE`.
 
 
 ## Channel 0 request types
@@ -192,7 +189,7 @@ The numbers are sent big-endian - MSB first. The ReqType is a 4-byte identifier 
 
   Opens a new channel to the specified service. A new channel is allocated a free ID and the service is assigned to it. When initializing the service, an additional data may be specified, the service consumes that data and uses it for initialization.
 
-  The request additional data has the following format:
+  The request's additional data has the following format:
 
 | Data       | Type   | Notes                                                      |
 | ---------- | ------ | ---------------------------------------------------------- |
@@ -209,12 +206,12 @@ The numbers are sent big-endian - MSB first. The ReqType is a 4-byte identifier 
 | ChannelID | uint16 | The ID of the new Channel (MSB first)  |
 | reserved  | ?      | Any trailing data is currently ignored |
 
-  If the service is not known, the `ERR_NO_SUCH_SERVICE` Error is returned. If there are no free channel IDs, the `ERR_NO_CHANNEL_ID` Error is returned. If the service failed to initialize, the `ERR_SERVICE_INIT_FAILED` Error is returned.
+  If the service is not known, the `ERR_NO_SUCH_SERVICE` Error is returned. If there are no free channel IDs, the `ERR_NO_CHANNEL_ID` Error is returned. If the service failed to initialize, the `ERR_SERVICE_INIT_FAILED` Error is returned. Other errors may be returned as needed.
 
 
 ### `clse`: Close an existing channel
 
-  Closes an existing channel. If the specified channel doesn't exist, returns `ERR_NO_SUCH_CHANNEL`.
+  Closes an existing channel. If the specified channel doesn't exist, returns a `ERR_NO_SUCH_CHANNEL` error.
 
   The request additional data has the following format:
 
@@ -226,7 +223,7 @@ The numbers are sent big-endian - MSB first. The ReqType is a 4-byte identifier 
 
 ### `ping`: Request a response
 
-  Simply requests a `pong` response, used for keeping the connection alive (sent every 30 seconds) and possibly to measure the connection latency. In Deskemes this is sent only by the desktop client, but both parties accept it.
+  Simply requests a `pong` response, used for keeping the connection alive (sent every 30 seconds) and possibly to measure the connection latency. In Deskemes this is sent only by the desktop client, but both parties accept the request and produce a `pong` response.
 
   Any additional data sent via `ping` is to be repeated in the `pong` response.
 
@@ -247,7 +244,6 @@ The numbers are sent big-endian - MSB first. The ReqType is a 4-byte identifier 
 |         3 | ERR_NO_CHANNEL_ID       | All the Channel IDs are used, cannot allocate a new one              |
 |         4 | ERR_SERVICE_INIT_FAILED | The service failed to initialize. Channel not allocated              |
 |         5 | ERR_NO_PERMISSION       | The phone app needs an (Android) permission first for this operation |
-|         6 | ERR_NOT_YET             | The sender doesn't want to TLS or pair yet                           |
 
 
 ## Design decisions:
@@ -258,6 +254,8 @@ The numbers are sent big-endian - MSB first. The ReqType is a 4-byte identifier 
 ### Why not use TLS on the connection from the very beginning?
 
   The TLS requires the use of certificates; since each pair of [device, client] uses a different certificate, the peers wouldn't know which certificate to present. They need to first receive the PublicID of the other party in order to select the proper certificate.
+
+  Theoretically we could use a single certificate for all connections that are made by a single app / client instance. Connections woud still be secure and individual client-app pairs could be revoked, but it would block us from ever implementing a "CertChange".
 
 
 ### Why should the phone app delay its keypair generation?

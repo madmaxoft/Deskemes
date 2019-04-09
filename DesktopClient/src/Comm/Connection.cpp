@@ -64,6 +64,8 @@ protected:
 	QMutex mMtx;
 
 
+
+
 	// Channel override:
 	virtual void processIncomingMessage(const QByteArray & aMessage) override
 	{
@@ -99,6 +101,8 @@ protected:
 
 
 
+
+
 	/** Handles a Request message from the remote.
 	The aMessage contains the entire serialized message (incl. MsgType, ReqID and ReqType).*/
 	void handleRequest(const QByteArray & aMessage)
@@ -129,6 +133,8 @@ protected:
 
 
 
+
+
 	/** Handles a Response message from the remote.
 	The aMessage contains the entire serialized message (incl. MsgType and ReqID). */
 	void handleResponse(const QByteArray & aMessage)
@@ -151,6 +157,8 @@ protected:
 		lock.unlock();
 		req->mSuccessHandler(aMessage.mid(2));
 	}
+
+
 
 
 
@@ -179,6 +187,9 @@ protected:
 	}
 
 
+
+
+
 	/** Sends a success response to a previous request to the remote. */
 	void sendResponse(const quint8 aRequestID, const QByteArray & aMsgData = QByteArray())
 	{
@@ -188,6 +199,9 @@ protected:
 		buf.append(aMsgData);
 		mConnection.sendChannelMessage(this, buf);
 	}
+
+
+
 
 
 	/** Sends an error response to a previous request to the remote. */
@@ -204,6 +218,9 @@ protected:
 		buf.append(aMsgData);
 		mConnection.sendChannelMessage(this, buf);
 	}
+
+
+
 
 
 	/** Sends a request and calls the specified handler when response or error is received.
@@ -244,7 +261,6 @@ protected:
 		lock.unlock();
 
 		// Serialize and send the request:
-		qDebug() << "Sending request ID " << reqID << ", data = " << aAdditionalData;
 		QByteArray req;
 		req.push_back('\0');  // Request
 		req.push_back(static_cast<char>(reqID));
@@ -252,6 +268,9 @@ protected:
 		req.append(aAdditionalData);
 		mConnection.sendChannelMessage(this, req);
 	}
+
+
+
 
 
 	/** Called when a ping's response is received, with the calculated roundtrip time. */
@@ -267,12 +286,11 @@ private slots:
 	{
 		static int numPings = 0;
 		auto now = QDateTime::currentMSecsSinceEpoch();
-		qDebug() << "Sending ping " << numPings;
 		sendRequest(
 			"ping"_4cc,
 			[this, now](const QByteArray & aAdditionalData)
 			{
-				qDebug() << "Ping received in " << QDateTime::currentMSecsSinceEpoch() - now << " msec; ID = " << aAdditionalData;
+				Q_UNUSED(aAdditionalData);
 				this->pingReceived(QDateTime::currentMSecsSinceEpoch() - now);
 			},
 			[](const quint16 aErrorCode, const QByteArray & aErrorMessage)
@@ -316,8 +334,9 @@ Connection::Connection(
 	mRemoteVersion(0),
 	mHasSentStartTls(false)
 {
-	connect(aIO, &QIODevice::readyRead,    this, &Connection::ioReadyRead);
-	connect(aIO, &QIODevice::aboutToClose, this, &Connection::ioClosing);
+	connect(aIO, &QIODevice::readyRead,           this, &Connection::ioReadyRead);
+	connect(aIO, &QIODevice::aboutToClose,        this, &Connection::ioClosing);
+	connect(aIO, &QIODevice::readChannelFinished, this, &Connection::ioClosing);
 
 	// Send the protocol identification:
 	qDebug() << "Sending protocol identification";
@@ -773,12 +792,19 @@ void Connection::ioReadyRead()
 {
 	while (true)
 	{
-		auto data = mIO->read(4000);
-		if (data.size() == 0)
+		char buf[4000];
+		auto numBytes = mIO->read(buf, sizeof(buf));
+		if (numBytes == 0)
 		{
 			return;
 		}
-		processIncomingData(data);
+		else if (numBytes < 0)
+		{
+			qDebug() << "Reading from IO failed";
+			ioClosing();
+			return;
+		}
+		processIncomingData(QByteArray::fromRawData(buf, static_cast<int>(numBytes)));
 	}
 }
 
@@ -788,5 +814,6 @@ void Connection::ioReadyRead()
 
 void Connection::ioClosing()
 {
+	qDebug() << "Disconnected";
 	emit disconnected(this);
 }

@@ -110,6 +110,7 @@ public:
 	Asserts that the connection is csEncrypted. */
 	void sendChannelMessage(const Channel * aChannel, const QByteArray & aMessage);
 
+
 protected:
 
 	/** The components of the entire app. */

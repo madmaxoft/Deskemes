@@ -223,14 +223,10 @@ The numbers are sent big-endian - MSB first. The ReqType is a 4-byte identifier 
 
 ### `ping`: Request a response
 
-  Simply requests a `pong` response, used for keeping the connection alive (sent every 30 seconds) and possibly to measure the connection latency. In Deskemes this is sent only by the desktop client, but both parties accept the request and produce a `pong` response.
+  Simply requests a response, used for keeping the connection alive (sent every 30 seconds) and possibly to measure the connection latency. In Deskemes this is sent only by the desktop client, but both parties accept the request and produce a response.
 
-  Any additional data sent via `ping` is to be repeated in the `pong` response.
+  Any additional data sent via `ping` is to be repeated in the response.
 
-
-### `pong`: Responding to a ping
-
-  The `pong` response is sent after a `ping` request is received. The additional data from the `ping` is repeated in the `pong`.
 
 
 ## Error codes

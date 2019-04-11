@@ -21,9 +21,13 @@ class ChannelZero:
 
 public:
 
-	ChannelZero(Connection & aConnection, quint16 aID):
-		Super(aConnection, aID)
+	ChannelZero(Connection & aConnection):
+		Super(aConnection)
 	{
+		// Set the fixed channel ID, no opening necessary for this special channel:
+		mChannelID = 0;
+		mIsOpen = true;
+
 		// Add a ping-timer
 		connect(&mTimer, &QTimer::timeout, this, &ChannelZero::sendPing);
 		mTimer.start(1000);  // 1 second
@@ -44,6 +48,44 @@ public:
 			(*req.second).mErrorHandler(ERR_DISCONNECTED, "The connection was lost");
 		}
 	}
+
+
+
+
+
+	/** Sends the request to open a new connection for the specified Channel descendant instance.
+	Note that aChannel is still not opened at this point, clients need to wait for the opened() or failed()
+	signals on the Channel before writing data to it. */
+	void openChannel(
+		Connection::ChannelPtr aChannel,
+		const QByteArray & aServiceName,
+		const QByteArray & aServiceInitData
+	)
+	{
+		assert(!aChannel->mIsOpen);
+		assert(aChannel->channelID() == 0);
+
+		QByteArray req;
+		Utils::writeBE16Lstring(req, aServiceName);
+		Utils::writeBE16Lstring(req, aServiceInitData);
+		sendRequest("open"_4cc,
+			// Success handler:
+			[aChannel](const QByteArray & aAdditionalData)
+			{
+				aChannel->mChannelID = Utils::readBE16(aAdditionalData);
+				aChannel->mIsOpen = true;
+				emit aChannel->opened(aChannel.get());
+			},
+
+			// Failure handler:
+			[aChannel](const quint16 aErrorCode, const QByteArray & aErrorMessage)
+			{
+				emit aChannel->failed(aChannel.get(), aErrorCode, aErrorMessage);
+			},
+			req
+		);
+	}
+
 
 
 
@@ -215,7 +257,7 @@ protected:
 		buf.push_back(0x01);
 		buf.push_back(static_cast<char>(aRequestID));
 		buf.append(aMsgData);
-		mConnection.sendChannelMessage(this, buf);
+		sendMessage(buf);
 	}
 
 
@@ -234,7 +276,7 @@ protected:
 		buf.push_back(static_cast<char>(aRequestID));
 		Utils::writeBE16(buf, aErrorCode);
 		buf.append(aMsgData);
-		mConnection.sendChannelMessage(this, buf);
+		sendMessage(buf);
 	}
 
 
@@ -247,7 +289,7 @@ protected:
 	void sendRequest(
 		const quint32 aRequestType,
 		PendingRequest::SuccessHandler aSuccessHandler,
-		std::function<void(const quint16 aErrorCode, const QByteArray & aErrorMsg)> aErrorHandler,
+		PendingRequest::ErrorHandler aErrorHandler,
 		const QByteArray & aAdditionalData = QByteArray()
 	)
 	{
@@ -284,7 +326,7 @@ protected:
 		req.push_back(static_cast<char>(reqID));
 		Utils::writeBE32(req, aRequestType);
 		req.append(aAdditionalData);
-		mConnection.sendChannelMessage(this, req);
+		sendMessage(req);
 	}
 
 
@@ -325,6 +367,30 @@ protected:
 	/** The timer used for pinging. */
 	QTimer mTimer;
 };
+
+
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+// Connection::Channel:
+
+Connection::Channel::Channel(Connection & aConnection):
+	mConnection(aConnection),
+	mChannelID(0),
+	mIsOpen(false)
+{
+}
+
+
+
+
+
+void Connection::Channel::sendMessage(const QByteArray & aMessage)
+{
+	assert(mIsOpen);
+	mConnection.sendChannelMessage(mChannelID, aMessage);
+}
 
 
 
@@ -477,15 +543,21 @@ void Connection::localPairingApproved()
 
 
 
-void Connection::sendChannelMessage(const Connection::Channel * aChannel, const QByteArray & aMessage)
+bool Connection::openChannel(
+	ChannelPtr aChannel,
+	const QByteArray & aServiceName,
+	const QByteArray & aServiceInitData
+)
 {
-	QByteArray buf;
-	Utils::writeBE16(buf, aChannel->channelID());
-	Utils::writeBE16Lstring(buf, aMessage);
-
-	// TODO: TLS
-
-	mIO->write(buf);
+	if (mState != csEncrypted)
+	{
+		qWarning() << "Invalid protocol state";
+		return false;
+	}
+	auto ch0 = channelZero();
+	assert(ch0 != nullptr);
+	ch0->openChannel(aChannel, aServiceName, aServiceInitData);
+	return true;
 }
 
 
@@ -579,6 +651,13 @@ void Connection::processIncomingData(const QByteArray & aData)
 			{
 				// Empty loop body
 			}
+			break;
+		}
+
+		case csDisconnected:
+		{
+			// Probably some leftover data from the connection, don't know how to handle it, so drop it:
+			qDebug() << "Received data while disconnected: " << aData;
 			break;
 		}
 	}
@@ -729,7 +808,7 @@ void Connection::handleCleartextMessageStls()
 	setState(csEncrypted);
 
 	// Set up the command channel:
-	mChannels[0] = std::make_shared<ChannelZero>(*this, 0);
+	mChannels[0] = std::make_shared<ChannelZero>(*this);
 
 	// Push the leftover data to the TLS filter:
 	QByteArray leftoverData;
@@ -800,6 +879,41 @@ Connection::ChannelPtr Connection::channelByID(quint16 aChannelID)
 		return nullptr;
 	}
 	return itr->second;
+}
+
+
+
+
+
+std::shared_ptr<ChannelZero> Connection::channelZero()
+{
+	return std::static_pointer_cast<ChannelZero>(channelByID(0));
+}
+
+
+
+
+
+void Connection::addChannel(const quint16 aChannelID, Connection::ChannelPtr aChannel)
+{
+	QMutexLocker lock(&mMtxChannels);
+	assert(mChannels[aChannelID] == nullptr);
+	mChannels[aChannelID] = aChannel;
+}
+
+
+
+
+
+void Connection::sendChannelMessage(const quint16 aChannelID, const QByteArray & aMessage)
+{
+	QByteArray buf;
+	Utils::writeBE16(buf, aChannelID);
+	Utils::writeBE16Lstring(buf, aMessage);
+
+	// TODO: TLS
+
+	mIO->write(buf);
 }
 
 

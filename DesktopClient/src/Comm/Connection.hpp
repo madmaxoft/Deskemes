@@ -11,6 +11,13 @@
 
 
 
+// fwd:
+class ChannelZero;
+
+
+
+
+
 /** A class that represents a single connection to a device.
 A device can utilize multiple connections to the computer. The connections can use different transports
 (TCP, USB, Bluetooth), each transport provides a QIODevice interface for the actual IO.
@@ -107,9 +114,16 @@ public:
 	Stores the pairing in DevicePairings and sends the StartTLS request to the device. */
 	Q_INVOKABLE void localPairingApproved();
 
-	/** Sends the specified message through the connection to the remote channel specified.
-	Asserts that the connection is csEncrypted. */
-	void sendChannelMessage(const Channel * aChannel, const QByteArray & aMessage);
+	/** Opens a new channel on the muxed protocol with the specified Channel subclass.
+	The aChannel parameter is the Channel subclass instance that will be used to handle the channel's data.
+	Returns false if not in csEncrypted or in case of immediate errors.
+	Returns true on success, but the channel itself is not yet confirmed from the device at that point.
+	Users need to wait for the channel's opened() signal before they can send any data over the channel. */
+	bool openChannel(
+		ChannelPtr aChannel,
+		const QByteArray & aServiceName,
+		const QByteArray & aServiceInitData = QByteArray()
+	);
 
 
 protected:
@@ -206,6 +220,18 @@ protected:
 	/** Returns the channel identified by its ID, or nullptr if no such channel. */
 	ChannelPtr channelByID(quint16 aChannelID);
 
+	/** Returns the ChannelZero instance associated with this connection, or nullptr if the conenction
+	doesn't have the command channel assigned yet. */
+	std::shared_ptr<ChannelZero> channelZero();
+
+	/** Adds the specified channel to our internal channel map. */
+	void addChannel(const quint16 aChannelID, ChannelPtr aChannel);
+
+	/** Sends the specified message through the connection to the remote channel specified.
+	Asserts that the connection is csEncrypted.
+	To be used from Channel::sendMessage() only. */
+	void sendChannelMessage(const quint16 aChannelID, const QByteArray & aMessage);
+
 
 signals:
 
@@ -277,6 +303,10 @@ class Connection::Channel:
 
 public:
 
+	// Allow the control channel full access to this object (for opening and closing purposes):
+	friend class ChannelZero;
+
+
 	/** Basic error codes */
 	enum
 	{
@@ -290,20 +320,22 @@ public:
 		ERR_DISCONNECTED = 8,    ///> Internal comm error: The connection has been disconnected
 	};
 
+
 	/** Creates a new instance, bound to the specified connection. */
-	explicit Channel(Connection & aConnection, quint16 aChannelID):
-		mConnection(aConnection),
-		mChannelID(aChannelID)
-	{
-	}
+	explicit Channel(Connection & aConnection);
 
 	// Simple getters:
 	Connection & connection() const { return mConnection; }
 	quint16 channelID() const { return mChannelID; }
+	bool isOpen() const { return mIsOpen; }
 
 	/** Called by the parent connection when a new message arrives for the channel from the device.
 	Descendants use this to implement the receiving side of the protocol. */
 	virtual void processIncomingMessage(const QByteArray & aMessage) = 0;
+
+	/** Sends the specified message through the connection to the device.
+	Asserts that the connection has been actually opened (mIsOpen). */
+	void sendMessage(const QByteArray & aMessage);
 
 
 protected:
@@ -313,4 +345,20 @@ protected:
 
 	/** The channel ID used in the connection for this channel. */
 	quint16 mChannelID;
+
+	/** Set to true once the device confirms opening the channel.
+	Sending data on a non-open channel is a program logic error and will be caught in sendMessage(). */
+	bool mIsOpen;
+
+
+signals:
+
+	/** The channel has been confirmed open by the device. */
+	void opened(Channel * aSelf);
+
+	/** The channel has just been closed by the device. */
+	void closed(Channel * aSelf);
+
+	/** The channel has failed to open on the device. */
+	void failed(Channel * aSelf, const quint16 aErrorCode, const QByteArray & aErrorMessage);
 };

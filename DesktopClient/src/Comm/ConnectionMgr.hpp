@@ -97,8 +97,7 @@ protected slots:
 	/** Updates the connection's device's details in all current detections. */
 	void connUpdateDetails(Connection * aConnection);
 
-	/** Updates the connection's device's details in all current detections,
-	and if the connection is fully established (csEncrypted), notifies the DeviceMgr. */
-	void connStateChanged(Connection * aConnection);
+	/** Updates the connection's details and emits the newConnection() signal. */
+	void connEstablished(Connection * aConnection);
 };
 

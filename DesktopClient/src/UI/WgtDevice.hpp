@@ -40,4 +40,16 @@ private:
 
 	/** The device displayed in this widget. */
 	std::shared_ptr<Device> mDevice;
+
+
+protected slots:
+
+	/** Updates the identification labels - IMEI, IMSI, carrier. */
+	void updateIdentification(const QString & aImei, const QString & aImsi, const QString & aCarrierName);
+
+	/** Updates the battery level indicator. */
+	void updateBattery(const double aBatteryLevelPercent);
+
+	/** Updates the signal sterngth indicator. */
+	void updateSignalStrength(const double aSignalStrengthPercent);
 };

@@ -270,6 +270,26 @@ Check that the key displayed here matches the key displayed on your device.</sou
         <source>The device&apos;s name, as set in the app</source>
         <translation type="unfinished"></translation>
     </message>
+    <message>
+        <source>IMSI:</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Battery:</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>IMEI:</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Signal strength:</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Carrier:</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>WndDevices</name>

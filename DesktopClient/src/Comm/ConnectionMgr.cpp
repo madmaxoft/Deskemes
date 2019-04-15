@@ -73,7 +73,8 @@ void ConnectionMgr::addConnection(std::shared_ptr<Connection> aConnection)
 	connect(aConnection.get(), &Connection::receivedPublicID,     this, &ConnectionMgr::connUpdateDetails);
 	connect(aConnection.get(), &Connection::receivedFriendlyName, this, &ConnectionMgr::connUpdateDetails);
 	connect(aConnection.get(), &Connection::receivedAvatar,       this, &ConnectionMgr::connUpdateDetails);
-	connect(aConnection.get(), &Connection::stateChanged,         this, &ConnectionMgr::connStateChanged);
+	connect(aConnection.get(), &Connection::stateChanged,         this, &ConnectionMgr::connUpdateDetails);
+	connect(aConnection.get(), &Connection::established,          this, &ConnectionMgr::connEstablished);
 
 	QMutexLocker lock(&mMtxConnections);
 	mConnections.push_back(aConnection);
@@ -119,6 +120,7 @@ DetectedDevices::Device::Status ConnectionMgr::deviceStatusFromConnection(const 
 		case Connection::csBlacklisted:      return DetectedDevices::Device::dsBlacklisted;
 		case Connection::csDifferentKey:     return DetectedDevices::Device::dsNeedPairing;
 		case Connection::csEncrypted:        return DetectedDevices::Device::dsOnline;
+		case Connection::csDisconnected:     return DetectedDevices::Device::dsOffline;
 	}
 	return DetectedDevices::Device::dsNeedPairing;
 }
@@ -169,11 +171,10 @@ void ConnectionMgr::connUpdateDetails(Connection * aConnection)
 
 
 
-void ConnectionMgr::connStateChanged(Connection * aConnection)
+void ConnectionMgr::connEstablished(Connection * aConnection)
 {
+	assert(aConnection->state() == Connection::csEncrypted);
+
 	connUpdateDetails(aConnection);
-	if (aConnection->state() == Connection::csEncrypted)
-	{
-		emit newConnection(aConnection->shared_from_this());
-	}
+	emit newConnection(aConnection->shared_from_this());
 }

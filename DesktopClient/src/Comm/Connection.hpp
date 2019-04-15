@@ -238,6 +238,9 @@ signals:
 	/** Emitted when the connection to the device is lost. */
 	void disconnected(Connection * aConnection);
 
+	/** Emitted when the connection is fully established (has TLS, has ChannelZero). */
+	void established(Connection * aConnection);
+
 	/** Emitted when the connection detects that pairing with the remote peer is necessary
 	(either a "pair" request comes from the peer, or we sent it to them.
 	The receiver should also hook the disconnected() signal and dismiss the pairing UI if it fires. */

@@ -19,6 +19,9 @@ class ChannelZero:
 {
 	using Super = Connection::Channel;
 
+	Q_OBJECT
+
+
 public:
 
 	ChannelZero(Connection & aConnection):
@@ -70,10 +73,11 @@ public:
 		Utils::writeBE16Lstring(req, aServiceInitData);
 		sendRequest("open"_4cc,
 			// Success handler:
-			[aChannel](const QByteArray & aAdditionalData)
+			[this, aChannel](const QByteArray & aAdditionalData)
 			{
 				aChannel->mChannelID = Utils::readBE16(aAdditionalData);
 				aChannel->mIsOpen = true;
+				emit channelAcknowledged(aChannel);
 				emit aChannel->opened(aChannel.get());
 			},
 
@@ -88,6 +92,12 @@ public:
 
 
 
+
+
+signals:
+
+	/** Emitted after the device acknowledges opening the specified new channel. */
+	void channelAcknowledged(Connection::ChannelPtr aChannel);
 
 
 protected:
@@ -336,7 +346,10 @@ protected:
 	/** Called when a ping's response is received, with the calculated roundtrip time. */
 	void pingReceived(qint64 aRoundtripMsec)
 	{
-		qDebug() << "Ping received in " << aRoundtripMsec << " msec";
+		Q_UNUSED(aRoundtripMsec);
+
+		// TODO: Store and process the value
+		// qDebug() << "Ping received in " << aRoundtripMsec << " msec";
 	}
 
 
@@ -367,6 +380,8 @@ protected:
 	/** The timer used for pinging. */
 	QTimer mTimer;
 };
+
+#include "Connection.moc"
 
 
 
@@ -808,12 +823,23 @@ void Connection::handleCleartextMessageStls()
 	setState(csEncrypted);
 
 	// Set up the command channel:
-	mChannels[0] = std::make_shared<ChannelZero>(*this);
+	auto ch0 = std::make_shared<ChannelZero>(*this);
+	mChannels[0] = ch0;
+	connect(ch0.get(), &ChannelZero::channelAcknowledged,
+		[this](ChannelPtr aChannel)
+		{
+			QMutexLocker lock(&mMtxChannels);
+			assert(mChannels.find(aChannel->channelID()) == mChannels.end());
+			mChannels[aChannel->channelID()] = aChannel;
+		}
+	);
 
 	// Push the leftover data to the TLS filter:
 	QByteArray leftoverData;
 	std::swap(leftoverData, mIncomingData);
 	processIncomingData(leftoverData);
+
+	emit established(this);
 }
 
 

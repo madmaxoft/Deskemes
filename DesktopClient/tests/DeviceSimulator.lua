@@ -37,8 +37,8 @@ local ERR_NO_REQUEST_ID = 7
 -- the number represented by them (big-endian uint16)
 local function readBE16(aData, aStartIdx)
 	assert(type(aData) == "string")
-	aStartIdx = aStartIdx or 1
 
+	aStartIdx = aStartIdx or 1
 	return string.byte(aData, aStartIdx) * 256 + string.byte(aData, aStartIdx + 1)
 end
 
@@ -48,10 +48,81 @@ end
 
 --- Converts the specified number to its big-endian uint16 representation and returns it as a two-byte string
 local function writeBE16(aNumber)
+	assert(type(aNumber) == "number")
 	assert(aNumber >= 0)
 	assert(aNumber <= 65535)
+
 	local highByte = math.floor(aNumber / 256)
 	return string.char(highByte, aNumber - 256 * highByte)
+end
+
+
+
+
+
+--- Converts the specified number to its big-endian uint32 representation and returns it as a four-byte string
+local function writeBE32(aNumber)
+	assert(type(aNumber) == "number")
+	assert(aNumber >= 0)
+	assert(aNumber < 65536 * 65536)
+
+	local byte1 = math.floor(aNumber / (65536 * 256))
+	aNumber = aNumber - byte1 * 65536 * 256
+	local byte2 = math.floor(aNumber / 65536)
+	aNumber = aNumber - byte2 * 65536
+	local byte3 = math.floor(aNumber / 256)
+	aNumber = aNumber - byte3 * 256
+	local byte4 = math.floor(aNumber)
+	return string.char(byte1, byte2, byte3, byte4)
+end
+
+
+
+
+
+--- Converts the specified number to its big-endian signed int32 representation and returns it as a four-byte string
+local function writeBE32s(aNumber)
+	assert(type(aNumber) == "number")
+	assert(aNumber >= -32768 * 65536)
+	assert(aNumber < 32768 * 65536)
+
+	if (aNumber < 0) then
+		return writeBE32(65536 * 65536 + aNumber)
+	else
+		return writeBE32(aNumber)
+	end
+end
+
+
+
+
+
+--- Converts the specified number to its big-endian fixed-point-32.32 representation and returns it as an eight-byte string
+local function writeBEFP64(aNumber)
+	assert(type(aNumber) == "number")
+	assert(aNumber >= -32768 * 65536)
+	assert(aNumber < 32768 * 65536)
+
+	if (aNumber < 0) then
+		aNumber = 65526 * 65526 + aNumber
+	end
+	local intPart = math.floor(aNumber)
+	local fracPart = 65536 * (aNumber - math.floor(aNumber))
+	return writeBE32(intPart) .. writeBE32(fracPart)
+end
+
+
+
+
+
+--- Reads a string prefixed by its 2-byte BE length, from aData starting at the specified index
+-- Returns the string read and the index of byte following the last byte of the string
+local function readBE16LString(aData, aStartIdx)
+	assert(type(aData) == "string")
+
+	aStartIdx = aStartIdx or 1
+	local len = readBE16(aData, aStartIdx)
+	return string.sub(aData, aStartIdx + 2, aStartIdx + 1 + len), aStartIdx + 2 + len
 end
 
 
@@ -91,6 +162,10 @@ local Channel =
 
 	-- Function that is called to process messages incoming on the channel
 	handleMessage = nil,
+
+	--- Function that is called when the channel is opened, with the init data sent from the remote as its parameter
+	-- Returns true on success, nil and error message on failure.
+	init = nil,
 }
 
 
@@ -112,9 +187,176 @@ end
 function Channel:sendMessage(aMsg)
 	assert(type(self) == "table")
 	assert(type(self.mDevice) == "table")
+	assert(type(self.mID) == "number")
+	assert(self.mID >= 0)
+	assert(self.mID <= 65536)
 
 	self.mDevice:sendMuxMessage(self.mID, aMsg)
 end
+
+
+
+
+
+
+-------------------------------------------------------------------------------------------------------------
+-- ChannelInfo class:
+local ChannelInfo = Channel:new()
+
+
+
+
+
+function ChannelInfo:init()
+	-- No explicit initialization needed
+	return true
+end
+
+
+
+
+
+
+function ChannelInfo:handleMessage(aMsg)
+	assert(type(self) == "table")
+
+	for i = 1, #aMsg, 4 do
+		local keyMask = string.sub(aMsg, i, i + 3)
+		self:sendValues(keyMask)
+	end
+end
+
+
+
+
+
+--- A map of "key" -> value-or-fn for all known ChannelInfo's values
+-- A value is serialized directly, a function is called and its first return value is serialized
+-- The keys are converted into four-element arrays, "batl" -> {"b", "a", "t", "l"}, for easier comparison
+local gInfoValues =
+{
+	["time"] = os.time,
+	["batl"] = function()
+		local sec = os.time()
+		return math.floor(sec - 100 * math.floor(sec / 100))
+	end,
+	["sist"] = function()
+		return 50 + 50 * math.sin(os.time() / 20)
+	end,
+	["big "] = function()
+		return string.rep("b", 65535)
+	end,
+	["carr"] = "DeviceSimulatorCarrier",
+	["imei"] = "DeviceSimulatorIMEI",
+	["imsi"] = "DeviceSimulatorIMSI",
+}
+-- Process the table's keys into the tabular version:
+do
+	local tmp = {}
+	for k, v in pairs(gInfoValues) do
+		local tbl =
+		{
+			k:sub(1, 1),
+			k:sub(2, 2),
+			k:sub(3, 3),
+			k:sub(4, 4),
+		}
+		tmp[tbl] = v
+	end
+	gInfoValues = tmp
+	tmp = nil
+end
+
+
+
+
+--- Serializes a single value to the wire-transmit format
+-- aValue is the value entry in the gInfoValues table, can be a string, number or function
+function ChannelInfo:serializeValue(aKey, aValue)
+	assert(type(aKey) == "table")
+	assert(type(aKey[1]) == "string")
+	assert(type(aKey[2]) == "string")
+	assert(type(aKey[3]) == "string")
+	assert(type(aKey[4]) == "string")
+	assert(aValue)
+
+	local key = aKey[1] .. aKey[2] .. aKey[3] .. aKey[4]
+	local v = aValue
+	if (type(v) == "function") then
+		v = v()
+		assert(type(v) ~= "function")
+	end
+
+	if (type(v) == "number") then
+		if (math.floor(v) == v) then
+			-- Send as Int32
+			print("Sending InfoValue " .. key .. " as Int32: " .. v)
+			return key .. string.char(3) .. writeBE32s(v)
+		else
+			-- Send as FP64
+			print("Sending InfoValue " .. key .. " as FP64: " .. v)
+			return key .. string.char(6) .. writeBEFP64(v)
+		end
+	elseif (type(v) == "string") then
+		print("Sending InfoValue " .. key .. " as String: " .. v)
+		return key .. string.char(7) .. writeBE16(#v) .. v
+	else
+		error("Invalid value type: " .. type(v) .. " (key " .. aKey .. ", aValue " .. tostring(aValue))
+	end
+end
+
+
+
+
+
+--- Sends all our values that match the specified mask
+function ChannelInfo:sendValues(aKeyMask)
+	assert(type(self) == "table")
+	assert(type(aKeyMask) == "string")
+
+	local current = ""
+	local lenCurrent = 0
+	local keyMask =
+	{
+		aKeyMask:sub(1, 1),
+		aKeyMask:sub(2, 2),
+		aKeyMask:sub(3, 3),
+		aKeyMask:sub(4, 4),
+	}
+	for k, v in pairs(gInfoValues) do
+		if (
+			((keyMask[1] == "?") or (keyMask[1] == k[1])) and
+			((keyMask[2] == "?") or (keyMask[2] == k[2])) and
+			((keyMask[3] == "?") or (keyMask[3] == k[3])) and
+			((keyMask[4] == "?") or (keyMask[4] == k[4]))
+		) then
+			local serialized = self:serializeValue(k, v)
+			local lenSerialized = #serialized
+			if (lenSerialized + lenCurrent > 65536) then
+				self:sendMessage(current)
+				current = serialized
+				lenCurrent = lenSerialized
+			else
+				current = current .. serialized
+				lenCurrent = lenCurrent + lenSerialized
+			end
+		end
+	end
+	if (lenCurrent > 0) then
+		self:sendMessage(current)
+	end
+end
+
+
+
+
+
+-------------------------------------------------------------------------------------------------------------
+--- A map of "serviceName" -> ChannelClass for all known services / channels:
+local gChannelClasses =
+{
+	["info"] = ChannelInfo,
+}
 
 
 
@@ -176,7 +418,7 @@ function ChannelZero:handleRequest(aRequestType, aRequestID, aAdditionalData)
 	assert(type(aAdditionalData or "") == "string")
 
 	if (aRequestType == "ping") then
-		print("Received a Ch0 ping " .. aRequestID .. " / " .. aAdditionalData)
+		print("Received a Ch0 ping: ReqID " .. aRequestID .. " / Additional data " .. aAdditionalData)
 		if (numSuccessfulPings > 10) then
 			print("Sending an Error response")
 			numSuccessfulPings = 0
@@ -186,7 +428,31 @@ function ChannelZero:handleRequest(aRequestType, aRequestID, aAdditionalData)
 			self:sendResponse(aRequestID, aAdditionalData)
 		end
 	elseif (aRequestType == "open") then
-		-- TODO
+		local svcInitData, svcName, nextIdx
+		svcName, nextIdx = readBE16LString(aAdditionalData)
+		svcInitData, nextIdx = readBE16LString(aAdditionalData, nextIdx)
+		local cls = gChannelClasses[svcName]
+		if not(cls) then
+			print("An unknown service was requested: \"" .. svcName .. "\". Failing the request.")
+			self:sendError(aRequestID, ERR_NO_SUCH_SERVICE, svcName)
+			return
+		end
+		local channelID = self.mDevice:findFreeChannelID()
+		if not(channelID) then
+			print("There's no free ChannelID for the requested service \"" .. svcName .. "\". Failing the request.")
+			self:sendError(aRequestID, ERR_NO_CHANNEL_ID, svcName)
+			return
+		end
+		local ch = cls:new({mDevice = self.mDevice, mID = channelID})
+		local isOK, msg = ch:init(svcInitData)
+		if not(isOK) then
+			print("Service \"" .. svcName .. "\" failed to initialize: " .. tostring(msg))
+			self:sendError(aRequestID, ERR_SERVICE_INIT_FAILED, "Service failed to initialize: " .. tostring(msg))
+			return
+		end
+		print("Opened a new channel for service \"" .. svcName .. "\", ID " .. channelID)
+		self.mDevice.mChannels[channelID] = ch
+		self:sendResponse(aRequestID, writeBE16(channelID))
 	elseif (aRequestType == "clse") then
 		-- TODO
 	else
@@ -506,6 +772,22 @@ function Device:sendMuxMessage(aChannelID, aMsg)
 	self.mSocket:send(writeBE16(aChannelID) .. writeBE16(len) .. aMsg)
 end
 
+
+
+
+
+--- Finds a ChannelID that is free for a new channel to be opened on
+-- Returns the ChannelID, or nil if there's no free ID available
+function Device:findFreeChannelID()
+	assert(type(self) == "table")
+	assert(type(self.mChannels) == "table")
+
+	for i = 0, 65535 do
+		if not(self.mChannels[i]) then
+			return i
+		end
+	end
+end
 
 
 

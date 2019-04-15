@@ -101,4 +101,14 @@ quint32 readBE32(const QByteArray & aData, int aIndex)
 	return readBE32(reinterpret_cast<const quint8 *>(aData.constData()) + aIndex);
 }
 
+
+
+
+
+quint64 readBE64(const QByteArray & aData, int aIndex)
+{
+	assert(aData.size() >= aIndex + 7);
+	return readBE64(reinterpret_cast<const quint8 *>(aData.constData()) + aIndex);
+}
+
 }  // namespace Utils

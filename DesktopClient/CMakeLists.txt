@@ -153,6 +153,9 @@ set(SOURCES
 	src/Comm/UdpBroadcaster.cpp
 	src/Comm/UsbDeviceEnumerator.cpp
 
+	# The Comm Channel protocols:
+	src/Comm/Channels/InfoChannel.cpp
+
 	# DB-related sources:
 	src/DB/Database.cpp
 	src/DB/DatabaseBackup.cpp
@@ -194,6 +197,9 @@ set(HEADERS
 	src/Comm/TcpListener.hpp
 	src/Comm/UdpBroadcaster.hpp
 	src/Comm/UsbDeviceEnumerator.hpp
+
+	# The Comm Channel protocols:
+	src/Comm/Channels/InfoChannel.hpp
 
 	# DB-related headers:
 	src/DB/Database.hpp
@@ -247,9 +253,10 @@ set(RESOURCES
 	res/img/bluetooth.png
 )
 
-set(DOCS
+set(DEVDOCS
 	../DevDocs/Architecture.md
 	../DevDocs/Connection.md
+	"../DevDocs/Channel - Info.md"
 )
 
 if(WIN32)
@@ -305,7 +312,7 @@ endforeach()
 
 
 
-add_executable(Deskemes WIN32 MACOSX_BUNDLE ${SOURCES} ${HEADERS} ${UI} ${RESOURCES} ${QMFILES} ${DOCS})
+add_executable(Deskemes WIN32 MACOSX_BUNDLE ${SOURCES} ${HEADERS} ${UI} ${RESOURCES} ${QMFILES} ${DEVDOCS})
 
 target_link_libraries(Deskemes
 	Qt5::Widgets

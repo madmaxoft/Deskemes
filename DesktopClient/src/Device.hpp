@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <QObject>
+#include <QTimer>
 #include "Comm/Connection.hpp"
 
 
@@ -10,6 +11,7 @@
 
 // fwd:
 class Device;
+class InfoChannel;
 using DevicePtr = std::shared_ptr<Device>;
 
 
@@ -50,13 +52,46 @@ protected:
 	/** The connections through which the device is currently connected. */
 	std::vector<ConnectionPtr> mConnections;
 
+	/** The channel currently used for querying information from the device. */
+	std::shared_ptr<InfoChannel> mInfoChannel;
+
+	/** The timer used for querying status information from the device periodically. */
+	QTimer mInfoQueryTimer;
+
+
+	/** Opens an InfoChannel on one of the connections, sets it to mInfoChannel. */
+	void openInfoChannel();
+
 
 signals:
 
+	/** Emitted after a new Connection is added to mConnections. */
 	void connectionAdded(DevicePtr aSelf, ConnectionPtr aConnection);
 
+	/** Emitted when identification is received through the mInfoChannel. */
+	void identificationUpdated(const QString & aImei, const QString & aImsi, const QString & aCarrierName);
 
-public slots:
+	/** Emitted when the battery level is received from the device. */
+	void batteryUpdated(const double aBatteryLevelPercent);
+
+	/** Emitted when the signal strength is received from the device. */
+	void signalStrengthUpdated(const double aSignalStrengthPercent);
+
+
+private slots:
+
+	/** Queries the status information from the device, using the current mInfoChannel.
+	If the info channel is invalid, attempts to open a new one.
+	Called from mInfoQueryTimer. */
+	void queryStatusInfo();
+
+	/** Received the device's IMEI, IMSI or CarrierName through the mInfoChannel.
+	Emits the identificationUpdated() signal with correct values (cached in mInfoChannel). */
+	void receivedIdentification();
+
+	/** Received the device's battery level through the mInfoChannel.
+	Emits the batteryUpdated() signal. */
+	// void receivedBattery(const double aBatteryPercent);
 };
 
 Q_DECLARE_METATYPE(DevicePtr);

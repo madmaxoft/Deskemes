@@ -83,6 +83,13 @@ void DeviceMgr::newConnection(ConnectionPtr aConnection)
 	// No such device yet, create a new one:
 	qDebug() << "Creating a new device for connection " << aConnection->connectionID()
 		<< "; DeviceID = " << aConnection->remotePublicID().value();
-	auto dev = std::make_shared<Device>(aConnection);
+	auto dev = std::make_shared<Device>(aConnection->remotePublicID().value());
+	dev->addConnection(aConnection);
+	connect(dev.get(), &Device::goingOffline,
+		[this, dev]()
+		{
+			delDevice(dev);
+		}
+	);
 	addDevice(dev);
 }

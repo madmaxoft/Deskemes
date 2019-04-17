@@ -6,18 +6,10 @@
 
 
 
-Device::Device(ConnectionPtr aConnection):
-	mDeviceID(aConnection->remotePublicID().value()),
-	mConnections({aConnection})
+Device::Device(const QByteArray & aDeviceID):
+	mDeviceID(aDeviceID)
 {
 	assert(!mDeviceID.isEmpty());
-
-	// Start an info channel on the connection:
-	openInfoChannel();
-
-	// Query basic information from the device periodically:
-	connect(&mInfoQueryTimer, &QTimer::timeout, this, &Device::queryStatusInfo);
-	mInfoQueryTimer.start(1000);
 }
 
 
@@ -27,6 +19,15 @@ Device::Device(ConnectionPtr aConnection):
 void Device::addConnection(ConnectionPtr aConnection)
 {
 	mConnections.push_back(aConnection);
+	connect(aConnection.get(), &Connection::disconnected, this, &Device::connDisconnected);
+
+	// If this is the first connection added, start querying basic information from the device periodically:
+	if (mConnections.size() == 1)
+	{
+		connect(&mInfoQueryTimer, &QTimer::timeout, this, &Device::queryStatusInfo);
+		mInfoQueryTimer.start(1000);
+	}
+
 	emit connectionAdded(this->shared_from_this(), aConnection);
 }
 
@@ -78,10 +79,17 @@ void Device::openInfoChannel()
 		}
 	);
 	connect(mInfoChannel.get(), &InfoChannel::failed,
-		[](Connection::Channel * aChannel, const quint16 aErrorCode, const QByteArray & aErrorMsg)
+		[this](Connection::Channel * aChannel, const quint16 aErrorCode, const QByteArray & aErrorMsg)
 		{
 			Q_UNUSED(aChannel);
+			mInfoChannel.reset();
 			qWarning() << "Failed to open the info channel: " << aErrorCode << ": " << aErrorMsg;
+		}
+	);
+	connect(conn.get(), &Connection::disconnected,
+		[this]()
+		{
+			mInfoChannel.reset();
 		}
 	);
 	if (!conn->openChannel(mInfoChannel, "info"))
@@ -119,4 +127,27 @@ void Device::queryStatusInfo()
 void Device::receivedIdentification()
 {
 	emit identificationUpdated(mInfoChannel->imei(), mInfoChannel->imsi(), mInfoChannel->carrierName());
+}
+
+
+
+
+
+void Device::connDisconnected(Connection * aConnection)
+{
+	// Remove the connection from mConnections:
+	mConnections.erase(std::remove_if(mConnections.begin(), mConnections.end(),
+		[aConnection](ConnectionPtr aStoredConnection)
+		{
+			return (aConnection == aStoredConnection.get());
+		}),
+		mConnections.end()
+	);
+
+	// If this was the last connection, go offline:
+	if (mConnections.empty())
+	{
+		mInfoQueryTimer.stop();
+		emit goingOffline();
+	}
 }

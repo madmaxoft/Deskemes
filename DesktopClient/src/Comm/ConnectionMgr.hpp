@@ -84,6 +84,9 @@ signals:
 	Used by DeviceMgr to create / update devices. */
 	void newConnection(ConnectionPtr aConnection);
 
+	/** Emitted when a previously fully established connection goes offline. */
+	void lostConnection(ConnectionPtr aConnection);
+
 
 public slots:
 

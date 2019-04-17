@@ -28,8 +28,8 @@ class Device:
 
 public:
 
-	/** Creates a device that has the specified connection. */
-	explicit Device(ConnectionPtr aConnection);
+	/** Creates a device of the specified public ID that has no connection yet. */
+	explicit Device(const QByteArray & aDeviceID);
 
 	// Simple getters:
 	const QByteArray & deviceID() const { return mDeviceID; }
@@ -77,6 +77,9 @@ signals:
 	/** Emitted when the signal strength is received from the device. */
 	void signalStrengthUpdated(const double aSignalStrengthPercent);
 
+	/** Emitted when the last connection is lost and the device is going offline. */
+	void goingOffline();
+
 
 private slots:
 
@@ -89,9 +92,9 @@ private slots:
 	Emits the identificationUpdated() signal with correct values (cached in mInfoChannel). */
 	void receivedIdentification();
 
-	/** Received the device's battery level through the mInfoChannel.
-	Emits the batteryUpdated() signal. */
-	// void receivedBattery(const double aBatteryPercent);
+	/** The specified connection has been lost, removes it from mConnections and goes offline if it was
+	the last connection to the device. */
+	void connDisconnected(Connection * aConnection);
 };
 
 Q_DECLARE_METATYPE(DevicePtr);

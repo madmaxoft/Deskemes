@@ -17,6 +17,6 @@ public class NetworkChangeNotificationReceiver extends BroadcastReceiver
 	public void onReceive(Context aContext, Intent aIntent)
 	{
 		Log.d("Deskemes", "NetworkChangeNotificationReceiver received");
-		UdpListenerService.startIfNotRunning(aContext);
+		ConnectivityService.startIfNotRunning(aContext);
 	}
 }

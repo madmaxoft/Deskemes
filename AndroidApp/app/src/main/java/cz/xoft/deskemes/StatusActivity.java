@@ -15,5 +15,6 @@ public class StatusActivity extends Activity
 	{
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_status);
+		UdpListenerService.startIfNotRunning(this);
 	}
 }

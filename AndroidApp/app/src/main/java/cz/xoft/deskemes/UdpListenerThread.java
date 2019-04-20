@@ -19,6 +19,18 @@ for broadcasted UDP beacons from Deskemes.
 Tries to listen on the PRIMARY_PORT; if that is not available, tries ALTERNATE_PORT. */
 public class UdpListenerThread extends Thread
 {
+	/** The interface that is used to report the received UDP beacons to. */
+	public interface IBeaconNotificationConsumer
+	{
+		/** The function called when a UDP beacon is received. */
+		public void beaconReceived(InetSocketAddress aAddressToConnect, int aProtocolVersion, byte[] aPublicID, boolean aIsDiscovery);
+	};
+
+
+
+
+
+
 	/** The tag used for logging. */
 	private static String TAG = "UdpListenerThread";
 
@@ -29,15 +41,23 @@ public class UdpListenerThread extends Thread
 	private final static int ALTERNATE_PORT = 4816;
 
 	/** The UDP socket used for listening. */
-	DatagramSocket mSocket;
+	private DatagramSocket mSocket;
 
 	/** Flag that is set to true to terminate the listening thread. */
 	private boolean mShouldTerminate = false;
 
-	/** The addresses that are already connected.
-	Used to quickly discard packets sent by the already-connected clients.
-	This list is managed by TODO: external class via addConnectedAddress() and delConnectedAddress(). */
-	private Set<InetAddress> mConnectedAddresses = new HashSet<>();
+	/** The destination consumer that is notified whenever a valid UDP beacon is received. */
+	private IBeaconNotificationConsumer mBeaconNotificationConsumer = null;
+
+
+
+
+
+	/** Updates the beacon notification consumer used by this class. */
+	public void setBeaconNotificationConsumer(IBeaconNotificationConsumer aBeaconNotificationConsumer)
+	{
+		mBeaconNotificationConsumer = aBeaconNotificationConsumer;
+	}
 
 
 
@@ -83,6 +103,11 @@ public class UdpListenerThread extends Thread
 	Called by mThread when a UDP packet is received. */
 	private void processPacket(DatagramPacket aPacket)
 	{
+		if (mBeaconNotificationConsumer == null)
+		{
+			// No-where to report the beacon anyway, so bail out immediately:
+			return;
+		}
 		int length = aPacket.getLength();
 		byte[] data = aPacket.getData();
 		if (length < 31)
@@ -110,47 +135,8 @@ public class UdpListenerThread extends Thread
 		{
 			return;
 		}
-		if (isCurrentlyConnected(aPacket.getAddress()) && !isDiscovery)
-		{
-			return;
-		}
-		Log.d(TAG, "Received a Deskemes beacon from " + aPacket.getSocketAddress() +
-			" port " + tcpPort +
-			", PublicID 0x" + Utils.bytesToHex(publicID) +
-			", version " + protocolVersion
-		);
-		// TODO: Report the attempt so that a connection to the client can be made
-	}
-
-
-
-
-
-	/** Returns true if the specified address is in the list of currently connected clients. */
-	synchronized public boolean isCurrentlyConnected(InetAddress aAddress)
-	{
-		return mConnectedAddresses.contains(aAddress);
-	}
-
-
-
-
-	/** Adds the specified address to the list of currently connected clients.
-	From then on, UDP beacons from those clients will be ignored unless their IsDiscovery flag is on. */
-	synchronized public void addConnectedAddress(InetAddress aAddress)
-	{
-		mConnectedAddresses.add(aAddress);
-	}
-
-
-
-
-
-	/** Adds the specified address to the list of currently connected clients.
-	UDP beacons from this client will no longer be ignored. */
-	synchronized public void delConnectedAddress(InetAddress aAddress)
-	{
-		mConnectedAddresses.remove(aAddress);
+		InetSocketAddress addr = new InetSocketAddress(aPacket.getAddress(), tcpPort);
+		mBeaconNotificationConsumer.beaconReceived(addr, protocolVersion, publicID, isDiscovery);
 	}
 
 

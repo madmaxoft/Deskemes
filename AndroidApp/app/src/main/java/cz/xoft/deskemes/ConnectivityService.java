@@ -19,13 +19,11 @@ public class ConnectivityService extends Service
 	/** The thread that listens for and reports valid Deskemes UDP beacons. */
 	private UdpListenerThread mUdpListenerThread;
 
+	/** The filter that implements the blacklist for ignoring UDP beacons based on their address. */
+	private AddressBlacklistBeaconFilter mAddressBlacklistBeaconFilter;
 
-
-
-
-	public ConnectivityService()
-	{
-	}
+	/** The manager of all TCP connections. */
+	private ConnectionMgr mConnectionMgr;
 
 
 
@@ -50,6 +48,10 @@ public class ConnectivityService extends Service
 	public void onCreate()
 	{
 		mUdpListenerThread = new UdpListenerThread();
+		mConnectionMgr = new ConnectionMgr();
+		mAddressBlacklistBeaconFilter = new AddressBlacklistBeaconFilter(mConnectionMgr);
+		mUdpListenerThread.setBeaconNotificationConsumer(mAddressBlacklistBeaconFilter);
+		mConnectionMgr.start();
 		mUdpListenerThread.start();
 	}
 

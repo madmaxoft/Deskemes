@@ -4,11 +4,8 @@ import android.util.Log;
 
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
-import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
-import java.util.HashSet;
-import java.util.Set;
 
 
 
@@ -91,7 +88,7 @@ public class UdpListenerThread extends Thread
 		}
 		catch (Exception exc)
 		{
-			Log.d(TAG, "no longer listening for UDP broadcasts", exc);
+			Log.d(TAG, "No longer listening for UDP broadcasts", exc);
 		}
 	}
 

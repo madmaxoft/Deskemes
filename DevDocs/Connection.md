@@ -240,6 +240,7 @@ The numbers are sent big-endian - MSB first. The ReqType is a 4-byte identifier 
 |         3 | ERR_NO_CHANNEL_ID       | All the Channel IDs are used, cannot allocate a new one              |
 |         4 | ERR_SERVICE_INIT_FAILED | The service failed to initialize. Channel not allocated              |
 |         5 | ERR_NO_PERMISSION       | The phone app needs an (Android) permission first for this operation |
+|         6 | ERR_NO_SUCH_CHANNEL     | Trying to close a channel that is not open                           |
 
 
 ## Design decisions:

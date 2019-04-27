@@ -56,6 +56,32 @@ public class ByteArrayReader
 
 
 
+	/** Creates a new instance of the reader that processes the specified data, starting at the specified index. */
+	public ByteArrayReader(byte[] aData, int aInitialIndex)
+	{
+		mData = aData;
+		mLength = aData.length;
+		mIndex = aInitialIndex;
+	}
+
+
+
+
+
+	public byte readByte() throws DataEndReachedException
+	{
+		if (mIndex >= mLength)
+		{
+			throw new DataEndReachedException();
+		}
+		mIndex += 1;
+		return mData[mIndex - 1];
+	}
+
+
+
+
+
 	/** Reads a two-byte big-endian number from the data. */
 	public int readBE16() throws DataEndReachedException
 	{
@@ -65,6 +91,22 @@ public class ByteArrayReader
 		}
 		int val = (mData[mIndex] << 8) | (mData[mIndex + 1] & 0xff);
 		mIndex += 2;
+		return val;
+	}
+
+
+
+
+
+	/** Reads a four-byte big-endian number from the data. */
+	public int readBE32() throws DataEndReachedException
+	{
+		if (mIndex + 3 > mLength)
+		{
+			throw new DataEndReachedException();
+		}
+		int val = (mData[mIndex] << 24) | (mData[mIndex + 1] << 16) | (mData[mIndex + 2] << 8) | (mData[mIndex + 1] & 0xff);
+		mIndex += 4;
 		return val;
 	}
 

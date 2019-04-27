@@ -51,6 +51,7 @@ public class ConnectivityService extends Service
 		mConnectionMgr = new ConnectionMgr();
 		mAddressBlacklistBeaconFilter = new AddressBlacklistBeaconFilter(mConnectionMgr);
 		mUdpListenerThread.setBeaconNotificationConsumer(mAddressBlacklistBeaconFilter);
+		mConnectionMgr.setAddressBlacklist(mAddressBlacklistBeaconFilter);
 		mConnectionMgr.start();
 		mUdpListenerThread.start();
 	}
@@ -62,6 +63,7 @@ public class ConnectivityService extends Service
 	@Override
 	public void onDestroy()
 	{
+		// Terminate the UDP listener:
 		if (mUdpListenerThread != null)
 		{
 			Log.i(TAG, "Terminating the listener");
@@ -72,10 +74,28 @@ public class ConnectivityService extends Service
 			}
 			catch (Exception exc)
 			{
-				Log.e(TAG, "Caught an exception: " + exc.getMessage());
+				Log.e(TAG, "Failed to join UdpListenerThread", exc);
 			}
 			mUdpListenerThread = null;
 		}
+
+		// Terminate the ConnectionMgr:
+		if (mConnectionMgr != null)
+		{
+			Log.i(TAG, "Terminating the connections");
+			mConnectionMgr.terminate();
+			try
+			{
+				mConnectionMgr.join();
+			}
+			catch (Exception exc)
+			{
+				Log.e(TAG, "Failed to join ConnectionMgr", exc);
+			}
+			mConnectionMgr = null;
+		}
+
+		mAddressBlacklistBeaconFilter = null;
 	}
 
 

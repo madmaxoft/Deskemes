@@ -67,6 +67,43 @@ ConnectionPtr ConnectionMgr::connectionFromID(const QByteArray & aConnectionID)
 
 
 
+void ConnectionMgr::clearOfflineDevices()
+{
+	// Collect all offline connections:
+	std::vector<ConnectionPtr> toRemove;
+	{
+		QMutexLocker lock(&mMtxConnections);
+		for (const auto & conn: mConnections)
+		{
+			if (conn->state() == Connection::csDisconnected)
+			{
+				toRemove.push_back(conn);
+			}
+		}
+	}
+
+	// Remove them from all detections:
+	{
+		QMutexLocker lock(&mMtxDetections);
+		for (const auto & conn: toRemove)
+		{
+			const auto & id = conn->connectionID();
+			for (const auto & det: mDetections)
+			{
+				auto d = det.lock();
+				if (d != nullptr)
+				{
+					d->delDevice(id);
+				}
+			}
+		}
+	}
+}
+
+
+
+
+
 void ConnectionMgr::addConnection(std::shared_ptr<Connection> aConnection)
 {
 	// Register the change notifications for the device detection:
@@ -74,6 +111,7 @@ void ConnectionMgr::addConnection(std::shared_ptr<Connection> aConnection)
 	connect(aConnection.get(), &Connection::receivedFriendlyName, this, &ConnectionMgr::connUpdateDetails);
 	connect(aConnection.get(), &Connection::receivedAvatar,       this, &ConnectionMgr::connUpdateDetails);
 	connect(aConnection.get(), &Connection::stateChanged,         this, &ConnectionMgr::connUpdateDetails);
+	connect(aConnection.get(), &Connection::disconnected,         this, &ConnectionMgr::connUpdateDetails);
 	connect(aConnection.get(), &Connection::established,          this, &ConnectionMgr::connEstablished);
 
 	QMutexLocker lock(&mMtxConnections);

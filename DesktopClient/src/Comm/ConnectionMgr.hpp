@@ -48,6 +48,9 @@ public:
 	Returns nullptr if there's no such connection. */
 	ConnectionPtr connectionFromID(const QByteArray & aConnectionID);
 
+	/** Removes the devices that are currently offline from all detections. */
+	void clearOfflineDevices();
+
 
 protected:
 

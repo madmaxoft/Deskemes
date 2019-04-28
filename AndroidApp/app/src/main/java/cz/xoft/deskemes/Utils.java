@@ -59,6 +59,23 @@ public class Utils
 
 
 
+
+	/** Converts a long hex-string to a byte array. */
+	public static byte[] hexStringToByteArray(String s)
+	{
+		int len = s.length();
+		byte[] data = new byte[len / 2];
+		for (int i = 0; i < len; i += 2)
+		{
+			data[i / 2] = (byte)((Character.digit(s.charAt(i), 16) << 4) | Character.digit(s.charAt(i + 1), 16));
+		}
+		return data;
+	}
+
+
+
+
+
 	/** Converts the 4-byte number to an ASCII string representing the 4 bytes.
 	Eg. 0x64736d73 -> "dsms". */
 	static String stringFromBE32(int aValue)
@@ -138,9 +155,9 @@ public class Utils
 		return
 		(
 			((aData[aIndex] << 24) & 0xff000000) |
-			((aData[aIndex] << 16) & 0xff0000) |
-			((aData[aIndex] << 8) & 0xff00) |
-			(aData[aIndex] & 0xff)
+			((aData[aIndex + 1] << 16) & 0xff0000) |
+			((aData[aIndex + 2] << 8) & 0xff00) |
+			(aData[aIndex + 3] & 0xff)
 		);
 	}
 }

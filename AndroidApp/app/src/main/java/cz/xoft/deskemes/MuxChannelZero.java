@@ -148,7 +148,7 @@ class MuxChannelZero
 		short id = 0;
 		try
 		{
-			id = (short)aBar.readBE16();
+			id = aBar.readBE16();
 		}
 		catch (ByteArrayReader.DataEndReachedException exc)
 		{

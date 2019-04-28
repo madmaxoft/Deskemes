@@ -100,4 +100,47 @@ public class Utils
 			return "<non-convertible>";
 		}
 	}
+
+
+
+
+
+	static byte[] stringToUtf8(String aString)
+	{
+		try
+		{
+			return aString.getBytes("UTF-8");
+		}
+		catch (UnsupportedEncodingException exc)
+		{
+			Log.d(TAG, "Failed to convert string to UTF-8", exc);
+			return new byte[0];
+		}
+	}
+
+
+
+
+
+	/** Decodes the two bytes at the specified position in the array as a BE16 number. */
+	public static short decodeBE16(byte[] aData, int aIndex)
+	{
+		return (short)(((aData[aIndex] << 8) & 0xff00) | (aData[aIndex + 1] & 0xff));
+	}
+
+
+
+
+
+	/** Decodes the four bytes at the specified position in the array as a BE32 number. */
+	public static int decodeBE32(byte[] aData, int aIndex)
+	{
+		return
+		(
+			((aData[aIndex] << 24) & 0xff000000) |
+			((aData[aIndex] << 16) & 0xff0000) |
+			((aData[aIndex] << 8) & 0xff00) |
+			(aData[aIndex] & 0xff)
+		);
+	}
 }

@@ -123,9 +123,9 @@ public class UdpListenerThread extends Thread
 		boolean isDiscovery;
 		try
 		{
-			protocolVersion = reader.readBE16();
+			protocolVersion = reader.readBE16() & 0xffff;
 			publicID = reader.readBE16LBlob();
-			tcpPort = reader.readBE16();
+			tcpPort = reader.readBE16() & 0xffff;
 			isDiscovery = reader.readBoolean();
 		}
 		catch (ByteArrayReader.DataEndReachedException exc)

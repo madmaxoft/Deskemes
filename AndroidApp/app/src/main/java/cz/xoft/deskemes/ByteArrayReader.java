@@ -36,7 +36,7 @@ public class ByteArrayReader
 
 
 	/** Exception that is thrown when attempting to read past the data's end. */
-	public class DataEndReachedException extends Exception
+	class DataEndReachedException extends Exception
 	{
 	};
 
@@ -45,7 +45,7 @@ public class ByteArrayReader
 
 
 	/** Creates a new instance of the reader that processes the specified data. */
-	public ByteArrayReader(byte[] aData)
+	ByteArrayReader(byte[] aData)
 	{
 		mData = aData;
 		mLength = aData.length;
@@ -57,7 +57,7 @@ public class ByteArrayReader
 
 
 	/** Creates a new instance of the reader that processes the specified data, starting at the specified index. */
-	public ByteArrayReader(byte[] aData, int aInitialIndex)
+	ByteArrayReader(byte[] aData, int aInitialIndex)
 	{
 		mData = aData;
 		mLength = aData.length;
@@ -68,7 +68,7 @@ public class ByteArrayReader
 
 
 
-	public byte readByte() throws DataEndReachedException
+	byte readByte() throws DataEndReachedException
 	{
 		if (mIndex >= mLength)
 		{
@@ -82,14 +82,14 @@ public class ByteArrayReader
 
 
 
-	/** Reads a two-byte big-endian number from the data. */
-	public int readBE16() throws DataEndReachedException
+	/** Reads a two-byte big-endian unsigned number from the data. */
+	short readBE16() throws DataEndReachedException
 	{
 		if (mIndex + 1 > mLength)
 		{
 			throw new DataEndReachedException();
 		}
-		int val = (mData[mIndex] << 8) | (mData[mIndex + 1] & 0xff);
+		short val = Utils.decodeBE16(mData, mIndex);
 		mIndex += 2;
 		return val;
 	}
@@ -98,14 +98,14 @@ public class ByteArrayReader
 
 
 
-	/** Reads a four-byte big-endian number from the data. */
-	public int readBE32() throws DataEndReachedException
+	/** Reads a four-byte big-endian unsigned number from the data. */
+	int readBE32() throws DataEndReachedException
 	{
 		if (mIndex + 3 > mLength)
 		{
 			throw new DataEndReachedException();
 		}
-		int val = (mData[mIndex] << 24) | (mData[mIndex + 1] << 16) | (mData[mIndex + 2] << 8) | (mData[mIndex + 1] & 0xff);
+		int val = Utils.decodeBE32(mData, mIndex);
 		mIndex += 4;
 		return val;
 	}
@@ -115,9 +115,9 @@ public class ByteArrayReader
 
 
 	/** Reads a blob prefixed by 2 BE bytes specifying its length. */
-	public byte[] readBE16LBlob() throws DataEndReachedException
+	byte[] readBE16LBlob() throws DataEndReachedException
 	{
-		int len = readBE16();
+		int len = readBE16() & 0xffff;
 		if (mIndex + len > mLength)
 		{
 			throw new DataEndReachedException();
@@ -131,7 +131,7 @@ public class ByteArrayReader
 
 
 	/** Reads a UTF-8 string prefixed by 2 BE bytes specifying its length. */
-	public String readBE16LString() throws DataEndReachedException
+	String readBE16LString() throws DataEndReachedException
 	{
 		byte[] blob = readBE16LBlob();
 		try
@@ -150,7 +150,7 @@ public class ByteArrayReader
 
 
 	/** Reads a single byte and interprets it as a boolean value. */
-	public boolean readBoolean() throws DataEndReachedException
+	boolean readBoolean() throws DataEndReachedException
 	{
 		if (mIndex >= mLength)
 		{
@@ -168,7 +168,7 @@ public class ByteArrayReader
 	false if not / not enough bytes in the input.
 	Moves the current index past the end of the string.
 	If false is returned, the current index may be anywhere between the original position and the string length. */
-	public boolean checkAsciiString(String aString)
+	boolean checkAsciiString(String aString)
 	{
 		byte[] toCompare;
 		try

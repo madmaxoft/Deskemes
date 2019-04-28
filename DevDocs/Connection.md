@@ -177,7 +177,7 @@
 | AddData   | string | The error message (UTF-8; potentially user-visible)       |
 
 
-The numbers are sent big-endian - MSB first. The ReqType is a 4-byte identifier of what data is requested (list of request types is down below). A request can have an additional data. A response has a similar format but doesn't repeat the ReqType. Data length for each packet is capped at 64 KiB - 10 (so that the entire message fits into a single mux message); the assumption is that this is enough for all messages; no particular fragmentation scheme is specified. If a specified ReqType is not supported by the receiver, it sends an Error response with the error code `ERR_UNSUPPORTED_REQTYPE`.
+The numbers are sent big-endian - MSB first. The ReqType is a 4-byte identifier of what data is requested (list of request types is down below). A request can have an additional data. A response has a similar format but doesn't repeat the ReqType. Data length for each packet is capped at 64 KiB - 10 (so that the entire message fits into a single mux message); the assumption is that this is enough for all messages; no particular fragmentation scheme is specified. If a specified ReqType is not supported by the receiver, it sends an Error response with the error code `ERR_UNSUPPORTED_REQTYPE`. If the recipient cannot parse the request (it is incomplete or invalid), it sends an Error response with the error code `ERR_MALFORMED_REQUEST`; failure to parse a Response or an Error is not reported.
 
 
 ## Channel 0 request types
@@ -241,6 +241,7 @@ The numbers are sent big-endian - MSB first. The ReqType is a 4-byte identifier 
 |         4 | ERR_SERVICE_INIT_FAILED | The service failed to initialize. Channel not allocated              |
 |         5 | ERR_NO_PERMISSION       | The phone app needs an (Android) permission first for this operation |
 |         6 | ERR_NO_SUCH_CHANNEL     | Trying to close a channel that is not open                           |
+|         7 | ERR_MALFORMED_REQUEST   | The request couldn't be parsed properly                              |
 
 
 ## Design decisions:

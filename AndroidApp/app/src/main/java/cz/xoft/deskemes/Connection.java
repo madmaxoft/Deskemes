@@ -4,9 +4,8 @@ package cz.xoft.deskemes;
 import android.util.Log;
 
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.net.SocketAddress;
 import java.nio.BufferOverflowException;
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
@@ -129,7 +128,7 @@ class Connection
 	private State mState = State.Initial;
 
 	/** The remote address to which the connection will be made in the register() call. */
-	private final SocketAddress mRemoteAddress;
+	private final InetSocketAddress mRemoteAddress;
 
 	/** The selection key assigned by the selector in the register() call. */
 	private SelectionKey mSelectionKey;
@@ -151,13 +150,17 @@ class Connection
 	/** All the currently opened mux-protocol channels, indexed by their ChannelID. */
 	private Map<Short, MuxChannel> mMuxChannels;
 
+	/** The ConnectionMgr that takes care of this connection. */
+	private ConnectionMgr mConnMgr;
+
 
 
 
 
 	/** Creates a new instance that will connect to aRemoteAddress, and expect to find aBeaconPublicID there. */
-	Connection(InetSocketAddress aRemoteAddress, byte[] aBeaconPublicID)
+	Connection(ConnectionMgr aConnMgr, InetSocketAddress aRemoteAddress, byte[] aBeaconPublicID)
 	{
+		mConnMgr = aConnMgr;
 		mRemoteAddress = aRemoteAddress;
 		mBeaconPublicID = aBeaconPublicID;
 		mIncomingData = ByteBuffer.allocate(MAX_INCOMING_DATA);
@@ -184,15 +187,6 @@ class Connection
 		mChannel.connect(mRemoteAddress);
 		mSelectionKey = mChannel.register(aSelector, SelectionKey.OP_CONNECT, this);
 		Log.d(TAG, "Registration done");
-	}
-
-
-
-
-
-	SocketChannel channel()
-	{
-		return mChannel;
 	}
 
 
@@ -239,7 +233,7 @@ class Connection
 	/** Write data from mOutgoingData to mChannel. */
 	void selectedWrite()
 	{
-		Log.d(TAG, "Writing data");
+		// Log.d(TAG, "Writing data");
 		try
 		{
 			mOutgoingData.flip();
@@ -375,6 +369,8 @@ class Connection
 			return;
 		}
 		// TODO: Check the known remotes list
+		mOutgoingPacket.put(Utils.stringToUtf8("DummyPublicKey"));
+		sendCleartextMessage("pubk");
 	}
 
 
@@ -394,6 +390,7 @@ class Connection
 		mRemotePublicKey = aMsgData;
 		// TODO: Check if we even want to connect to this device.
 		// If yes, generate our own public key and send it
+		sendCleartextMessage("stls");
 	}
 
 
@@ -446,15 +443,12 @@ class Connection
 
 			// Send our info:
 			// TODO: Proper values and wait with pubk / stls until proper time
-			mOutgoingPacket.put("DummyFriendlyName".getBytes("UTF-8"));
+			mOutgoingPacket.put(Utils.stringToUtf8("DummyFriendlyName"));
 			sendCleartextMessage("fnam");
-			mOutgoingPacket.put("DummyPublicID".getBytes("UTF-8"));
+			mOutgoingPacket.put(Utils.stringToUtf8("DummyPublicID"));
 			sendCleartextMessage("pubi");
-			mOutgoingPacket.put("DummyPublicKey".getBytes("UTF-8"));
-			sendCleartextMessage("pubk");
-			sendCleartextMessage("stls");
 		}
-		catch (ByteArrayReader.DataEndReachedException | UnsupportedEncodingException exc)
+		catch (ByteArrayReader.DataEndReachedException exc)
 		{
 			close();
 		}
@@ -573,8 +567,9 @@ class Connection
 
 
 
-	/** Closes the entire connection. */
-	private void close()
+	/** Closes the entire connection.
+	Also called when the channel is closed from the remote end. */
+	void close()
 	{
 		// Log the full stacktrace with the debug message:
 		try
@@ -586,7 +581,7 @@ class Connection
 			Log.d(TAG, "Closing connection", exc);
 		}
 
-		// Close the connection:
+		// Close the channel:
 		try
 		{
 			mChannel.close();
@@ -595,5 +590,17 @@ class Connection
 		{
 			Log.d(TAG, "Failed to close channel", exc);
 		}
+
+		// Notify ConnectionMgr:
+		mConnMgr.connectionClosed(this);
+	}
+
+
+
+
+
+	InetAddress remoteAddress()
+	{
+		return mRemoteAddress.getAddress();
 	}
 }

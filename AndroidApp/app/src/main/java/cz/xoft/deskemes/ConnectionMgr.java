@@ -71,7 +71,7 @@ public class ConnectionMgr
 			", version " + aProtocolVersion
 		);
 		// TODO: Do not connect to unknown addresses / IDs unless their IsDiscovery flag is set.
-		queueRegisterConnection(new Connection(aAddressToConnect, aPublicID));
+		queueRegisterConnection(new Connection(this, aAddressToConnect, aPublicID));
 		mAddressBlacklist.blockAddress(aAddressToConnect.getAddress());
 	}
 
@@ -147,7 +147,7 @@ public class ConnectionMgr
 					{
 						// The connection was closed mid-processing, continue with the next
 					}
-				}
+				}  // for key: mSelector.selectedKeys()
 			}
 		}
 		catch (IOException exc)
@@ -170,15 +170,8 @@ public class ConnectionMgr
 		}
 		catch (IOException exc)
 		{
-			Log.d(TAG, "Failed to read data", exc);
-			try
-			{
-				c.channel().close();
-			}
-			catch (IOException exc2)
-			{
-				Log.d(TAG, "Failed to close channel after read failure", exc2);
-			}
+			Log.d(TAG, "Failed to read data, closing connection", exc);
+			c.close();
 		}
 	}
 
@@ -235,5 +228,15 @@ public class ConnectionMgr
 	void setAddressBlacklist(IAddressBlacklist aBlacklist)
 	{
 		mAddressBlacklist = aBlacklist;
+	}
+
+
+
+
+
+	/** Called by the Connection when it is closed, either locally or remotely. */
+	void connectionClosed(Connection aConnection)
+	{
+		mAddressBlacklist.allowAddress(aConnection.remoteAddress());
 	}
 }

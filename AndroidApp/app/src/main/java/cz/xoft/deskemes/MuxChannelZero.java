@@ -21,14 +21,19 @@ class MuxChannelZero
 	private final static int req_ping = 0x70696e67;
 
 	private final static short ERR_UNSUPPORTED_REQTYPE = 1;
-	private final static short ERR_NO_SUCH_SERVICE = 2;
-	private final static short ERR_NO_CHANNEL_ID = 3;
+	private final static short ERR_NO_SUCH_SERVICE     = 2;
+	private final static short ERR_NO_CHANNEL_ID       = 3;
 	private final static short ERR_SERVICE_INIT_FAILED = 4;
-	private final static short ERR_NO_PERMISSION = 5;
-	private final static short ERR_NO_SUCH_CHANNEL = 6;
+	private final static short ERR_NO_PERMISSION       = 5;
+	private final static short ERR_NO_SUCH_CHANNEL     = 6;
+	private final static short ERR_MALFORMED_REQUEST   = 7;
 
 	/** The tag used for logging. */
 	private final static String TAG = "MuxChannelZero";
+
+
+
+
 
 	/** Creates a new instance bound to the specified connection. */
 	MuxChannelZero(Connection aConnection)
@@ -51,9 +56,21 @@ class MuxChannelZero
 		}
 		switch (aMessage[0])
 		{
-			case msg_Request:  handleRequest(aMessage);  break;
-			case msg_Response: handleResponse(aMessage); break;
-			case msg_Error:    handleError(aMessage);    break;
+			case msg_Request:
+			{
+				handleRequest(aMessage);
+				break;
+			}
+			case msg_Response:
+			{
+				handleResponse(aMessage);
+				break;
+			}
+			case msg_Error:
+			{
+				handleError(aMessage);
+				break;
+			}
 			default:
 			{
 				Log.d(TAG, "Received a message of an unknown type: " + aMessage[0]);
@@ -74,6 +91,7 @@ class MuxChannelZero
 		byte requestID;
 		try
 		{
+			bar.readByte();  // Skip the message type byte
 			requestID = bar.readByte();
 			requestType = bar.readBE32();
 		}
@@ -84,12 +102,31 @@ class MuxChannelZero
 		}
 		switch (requestType)
 		{
-			case req_open: handleOpenRequest(requestID, aMessage);  break;
-			case req_clse: handleCloseRequest(requestID, aMessage, bar); break;
-			case req_ping: handlePingRequest(requestID, aMessage);  break;
+			case req_open:
+			{
+				handleOpenRequest(requestID, bar);
+				break;
+			}
+			case req_clse:
+			{
+				handleCloseRequest(requestID, bar);
+				break;
+			}
+			case req_ping:
+			{
+				handlePingRequest(requestID, aMessage);
+				break;
+			}
 			default:
 			{
-				sendError(requestID, ERR_UNSUPPORTED_REQTYPE, "Unsupported request type: `" + Utils.stringFromBE32(requestType) + "`");
+				Log.d(TAG,
+					"Received an unsupported request type: `" + Utils.stringFromBE32(requestType) +
+					"` (" + Integer.toHexString(requestType) + ")"
+				);
+				sendError(requestID, ERR_UNSUPPORTED_REQTYPE,
+					"Unsupported request type: `" + Utils.stringFromBE32(requestType) +
+					"` (" + Integer.toHexString(requestType) + ")"
+				);
 				break;
 			}
 		}
@@ -120,7 +157,7 @@ class MuxChannelZero
 		else
 		{
 			Log.d(TAG,
-				"Received an error: " + ((aMessage[2] << 8) | aMessage[3]) +
+				"Received an error: " + Utils.decodeBE16(aMessage, 2) +
 				"msg: " + Utils.utf8ToString(aMessage, 4, aMessage.length - 4)
 			);
 		}
@@ -130,12 +167,25 @@ class MuxChannelZero
 
 
 
-	/** Handles an `open` request: opens a new channel */
-	private void handleOpenRequest(byte aRequestID, byte[] aMessage)
+	/** Handles an `open` request: opens a new channel.
+	The ByteArrayReader is positioned at the start of the message's additional data. */
+	private void handleOpenRequest(byte aRequestID, ByteArrayReader aBar)
 	{
-		// TODO
-		Log.d(TAG, "TODO: Open a channel: " + Utils.utf8ToString(aMessage));
-		sendError(aRequestID, ERR_NO_SUCH_SERVICE, "No such service");
+		String svcName;
+		byte[] svcInitData;
+		try
+		{
+			svcName = aBar.readBE16LString();
+			svcInitData = aBar.readBE16LBlob();
+		}
+		catch (ByteArrayReader.DataEndReachedException exc)
+		{
+			Log.d(TAG, "Malformed `open` message.", exc);
+			sendError(aRequestID, ERR_MALFORMED_REQUEST, "Malformed `open` message (incomplete).");
+			return;
+		}
+		// TODO: Look up the service
+		sendError(aRequestID, ERR_NO_SUCH_SERVICE, "No such service: " + svcName);
 	}
 
 
@@ -143,9 +193,9 @@ class MuxChannelZero
 
 
 	/** Handles a `clse` request: closes an existing channel. */
-	private void handleCloseRequest(byte aRequestID, byte[] aMessage, ByteArrayReader aBar)
+	private void handleCloseRequest(byte aRequestID, ByteArrayReader aBar)
 	{
-		short id = 0;
+		short id;
 		try
 		{
 			id = aBar.readBE16();
@@ -153,6 +203,8 @@ class MuxChannelZero
 		catch (ByteArrayReader.DataEndReachedException exc)
 		{
 			Log.d(TAG, "Failed to read ChannelID from the `clse` request", exc);
+			sendError(aRequestID, ERR_MALFORMED_REQUEST, "Failed to read ChannelID from the request");
+			return;
 		}
 		if (id == 0)
 		{
@@ -164,12 +216,13 @@ class MuxChannelZero
 		if (ch == null)
 		{
 			Log.d(TAG, "Tried to close non-existing channel " + id);
-			sendError(aMessage[0], ERR_NO_SUCH_CHANNEL, "No such channel.");
+			sendError(aRequestID, ERR_NO_SUCH_CHANNEL, "No such channel.");
 			return;
 		}
 		Log.d(TAG, "Closing channel " + id);
 		// TODO: Close the channel
 	}
+
 
 
 
@@ -194,7 +247,7 @@ class MuxChannelZero
 		resp[1] = aRequestID;
 		resp[2] = (byte) (aErrorCode / 256);
 		resp[3] = (byte) (aErrorCode % 0xff);
-		System.arraycopy(resp, 4, errMsg, 0, len);
+		System.arraycopy(errMsg, 0, resp, 4, len);
 		sendMessage(resp);
 	}
 

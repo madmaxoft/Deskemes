@@ -532,9 +532,9 @@ void Connection::localPairingApproved()
 		(mState == csUnknownPairing) ||
 		(mState == csKnownPairing) ||
 		(mState == csRequestedPairing) ||
-		(mState == csDifferentKey)
+		(mState == csDifferentKey) ||
+		(mState == csEncrypted)  // The device has already started encryption
 	);
-	assert(!mHasSentStartTls);
 	assert(mRemotePublicID.isPresent());
 	assert(mRemotePublicKeyData.isPresent());
 	const auto & id = mRemotePublicID.value();
@@ -551,7 +551,10 @@ void Connection::localPairingApproved()
 		pairing.value().mLocalPrivateKeyData
 	);
 
-	sendCleartextMessage("stls"_4cc);
+	if (mState != csEncrypted)
+	{
+		sendCleartextMessage("stls"_4cc);
+	}
 }
 
 
@@ -710,6 +713,9 @@ bool Connection::extractAndHandleCleartextMessage()
 
 void Connection::handleCleartextMessage(const quint32 aMsgType, const QByteArray & aMsg)
 {
+	// DEBUG:
+	// qDebug() << "Received cleartext message " << Utils::writeBE32(aMsgType);
+
 	if (!mHasReceivedIdentification && (aMsgType != "dsms"_4cc))
 	{
 		qDebug() << "Didn't receive an identification message first; instead got " << Utils::writeBE32(aMsgType);

@@ -58,7 +58,7 @@ public:
 	);
 
 	/** Generates a new keypair for the specified device and stores it in the DB.
-	Silently ignored a keypair for the device already exists. */
+	Silently ignored if a keypair for the device already exists. */
 	void createLocalKeyPair(const QByteArray & aDevicePublicID);
 
 

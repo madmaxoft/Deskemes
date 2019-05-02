@@ -54,7 +54,10 @@ private:
 	std::unique_ptr<Ui::PgPairInit> mUI;
 
 	/** Set to true once the remote public key is received. */
-	bool mIsComplete;
+	bool mHasReceivedRemotePublicKey;
+
+	/** Set to true once the local keypair is created. */
+	bool mIsLocalKeyPairCreated;
 
 
 protected slots:
@@ -62,4 +65,8 @@ protected slots:
 	/** The connection has received the device's public key.
 	Pairing can continue. Steps the wizard forward. */
 	void receivedPublicKey(Connection * aConnection);
+
+	/** The local keypair has been created.
+	Called from the background thread creating the keypair after it finishes. */
+	void localKeyPairCreated();
 };

@@ -72,7 +72,7 @@ int PgTcpDeviceList::nextId() const
 	{
 		case DetectedDevices::Device::dsOnline:      return NewDeviceWizard::pgSucceeded;
 		case DetectedDevices::Device::dsNoPubKey:    return NewDeviceWizard::pgPairInit;
-		case DetectedDevices::Device::dsNeedPairing: return NewDeviceWizard::pgPairConfirm;
+		case DetectedDevices::Device::dsNeedPairing: return NewDeviceWizard::pgPairInit;
 		case DetectedDevices::Device::dsBlacklisted: return NewDeviceWizard::pgBlacklisted;
 		default:
 		{

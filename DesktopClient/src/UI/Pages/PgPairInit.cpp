@@ -15,7 +15,8 @@ PgPairInit::PgPairInit(ComponentCollection & aComponents, NewDeviceWizard & aPar
 	mComponents(aComponents),
 	mParent(aParent),
 	mUI(new Ui::PgPairInit),
-	mIsComplete(false)
+	mHasReceivedRemotePublicKey(false),
+	mIsLocalKeyPairCreated(false)
 {
 	mUI->setupUi(this);
 	setTitle(tr("Waiting for device"));
@@ -41,20 +42,28 @@ void PgPairInit::initializePage()
 	assert(conn->remotePublicID().isPresent());
 	connect(conn.get(), &Connection::receivedPublicKey, this, &PgPairInit::receivedPublicKey);
 	auto displayName = conn->friendlyName().valueOr(QString::fromUtf8(conn->remotePublicID().value()));
-	BackgroundTasks::enqueue(
-		tr("Generate public key for %1").arg(displayName),
-		[conn, displayName, pairings = mComponents.get<DevicePairings>()]()
-		{
-			qDebug() << "Sending local public key to " << displayName;
-			pairings->createLocalKeyPair(conn->remotePublicID().value());
-			QMetaObject::invokeMethod(conn.get(), "sendLocalPublicKey");
-		}
-	);
+	auto pairings = mComponents.get<DevicePairings>();
+	mIsLocalKeyPairCreated = pairings->lookupDevice(conn->remotePublicID().value()).isPresent();
+	if (!mIsLocalKeyPairCreated)
+	{
+		qDebug() << "Enqueueing local public key generation";
+		BackgroundTasks::enqueue(
+			tr("Generate public key for %1").arg(displayName),
+			[this, conn, displayName, pairings]()
+			{
+				qDebug() << "Sending local public key to " << displayName;
+				pairings->createLocalKeyPair(conn->remotePublicID().value());
+				QMetaObject::invokeMethod(conn.get(), "sendLocalPublicKey");
+				QMetaObject::invokeMethod(this, "localKeyPairCreated");
+			}
+		);
+	}
 	if (conn->remotePublicKeyData().isPresent())
 	{
-		receivedPublicKey(conn.get());
+		// Need to queue-invoke this method, otherwise the wizard becomes confused about what page to display
+		qDebug() << "The remote public key has already been received, invoking receivedPublicKey()";
+		QMetaObject::invokeMethod(this, "receivedPublicKey", Qt::QueuedConnection, Q_ARG(Connection *, conn.get()));
 	}
-
 }
 
 
@@ -72,7 +81,8 @@ int PgPairInit::nextId() const
 
 bool PgPairInit::isComplete() const
 {
-	return mIsComplete;
+	qDebug() << "IsComplete: " << mHasReceivedRemotePublicKey << ", " << mIsLocalKeyPairCreated;
+	return mHasReceivedRemotePublicKey && mIsLocalKeyPairCreated;
 }
 
 
@@ -81,8 +91,8 @@ bool PgPairInit::isComplete() const
 
 void PgPairInit::receivedPublicKey(Connection * aConnection)
 {
-	mIsComplete = (mParent.connection()->remotePublicKeyData().isPresent());
-	if (!mIsComplete)
+	mHasReceivedRemotePublicKey = (mParent.connection()->remotePublicKeyData().isPresent());
+	if (!mHasReceivedRemotePublicKey)
 	{
 		// This was called for a different connection? Perhaps going back and forth in the wizard.
 		assert(aConnection != mParent.connection().get());
@@ -90,5 +100,23 @@ void PgPairInit::receivedPublicKey(Connection * aConnection)
 	}
 	qDebug() << "Received device's public key";
 	completeChanged();
-	mParent.next();
+	if (isComplete())
+	{
+		mParent.next();
+	}
+}
+
+
+
+
+
+void PgPairInit::localKeyPairCreated()
+{
+	qDebug() << "Local keypair has been generated";
+	mIsLocalKeyPairCreated = true;
+	completeChanged();
+	if (isComplete())
+	{
+		mParent.next();
+	}
 }

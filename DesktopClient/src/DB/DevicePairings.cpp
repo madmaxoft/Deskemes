@@ -121,7 +121,7 @@ void DevicePairings::createLocalKeyPair(const QByteArray & aDevicePublicID)
 	auto oldPairing = lookupDevice(aDevicePublicID);
 	if (oldPairing.isPresent())
 	{
-		qDebug() << "Device " << aDevicePublicID << " already has a keypair.";
+		qDebug() << "Device " << aDevicePublicID << " already has a keypair. Ignoring creation request.";
 		return;
 	}
 

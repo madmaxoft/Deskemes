@@ -31,6 +31,16 @@ void TcpListener::start()
 
 
 
+void TcpListener::stop()
+{
+	assert(mServer.isListening());
+	mServer.close();
+}
+
+
+
+
+
 quint16 TcpListener::listeningPort()
 {
 	assert(mServer.isListening());

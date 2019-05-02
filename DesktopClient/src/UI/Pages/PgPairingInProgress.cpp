@@ -38,6 +38,10 @@ void PgPairingInProgress::initializePage()
 	auto conn = mParent.connection();
 	assert(conn != nullptr);
 	connect(conn.get(), &Connection::stateChanged, this, &PgPairingInProgress::connStateChanged);
+
+	// Check if the state was changed before we even started monitoring:
+	// Need to queue-invoke this method, otherwise the wizard becomes confused about what page to display
+	QMetaObject::invokeMethod(this, "connStateChanged", Qt::QueuedConnection, Q_ARG(Connection *, conn.get()));
 }
 
 

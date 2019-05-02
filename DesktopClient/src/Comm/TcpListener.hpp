@@ -43,6 +43,9 @@ public:
 	/** Starts listening on a system-assigned TCP port on all interfaces. */
 	void start();
 
+	/** Stops listening. */
+	void stop();
+
 	/** The port on which mServer is listening.
 	Asserts and throws a NotListeningError if not started yet. */
 	quint16 listeningPort();

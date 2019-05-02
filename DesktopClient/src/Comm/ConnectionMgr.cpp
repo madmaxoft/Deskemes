@@ -16,6 +16,26 @@ ConnectionMgr::ConnectionMgr(ComponentCollection & aComponents):
 
 
 
+ConnectionMgr::~ConnectionMgr()
+{
+	{
+		QMutexLocker lock(&mMtxDetections);
+		mDetections.clear();
+	}
+	{
+		QMutexLocker lock(&mMtxConnections);
+		for (auto & conn: mConnections)
+		{
+			conn->disconnect(this);
+		}
+		mConnections.clear();
+	}
+}
+
+
+
+
+
 std::vector<std::shared_ptr<Connection>> ConnectionMgr::connections() const
 {
 	QMutexLocker lock(&mMtxConnections);
@@ -97,6 +117,19 @@ void ConnectionMgr::clearOfflineDevices()
 				}
 			}
 		}
+	}
+}
+
+
+
+
+
+void ConnectionMgr::stop()
+{
+	QMutexLocker lock(&mMtxConnections);
+	for (auto & conn: mConnections)
+	{
+		conn->terminate();
 	}
 }
 

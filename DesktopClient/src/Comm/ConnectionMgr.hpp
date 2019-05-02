@@ -31,6 +31,8 @@ public:
 
 	explicit ConnectionMgr(ComponentCollection & aComponents);
 
+	virtual ~ConnectionMgr() override;
+
 	/** Returns a (shallow) copy of all the connections. */
 	std::vector<std::shared_ptr<Connection>> connections() const;
 
@@ -50,6 +52,9 @@ public:
 
 	/** Removes the devices that are currently offline from all detections. */
 	void clearOfflineDevices();
+
+	/** Disconnects all connections. */
+	void stop();
 
 
 protected:

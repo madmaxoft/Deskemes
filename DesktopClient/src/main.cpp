@@ -149,6 +149,8 @@ int main(int argc, char *argv[])
 
 		// Stop all background tasks:
 		BackgroundTasks::get().stopAll();
+		listener->stop();
+		connMgr->stop();
 
 		return res;
 	}

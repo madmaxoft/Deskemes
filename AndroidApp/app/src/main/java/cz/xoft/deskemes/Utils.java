@@ -160,4 +160,17 @@ public class Utils
 			(aData[aIndex + 3] & 0xff)
 		);
 	}
+
+
+
+
+	/** Encodes the value as a two-byte BE16 number. */
+	public static byte[] encodeBE16(short aValue)
+	{
+		return new byte[]
+		{
+			(byte)(aValue >> 8),
+			(byte)(aValue & 0xff),
+		};
+	}
 }

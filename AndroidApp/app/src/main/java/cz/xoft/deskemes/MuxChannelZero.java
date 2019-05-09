@@ -3,6 +3,8 @@ package cz.xoft.deskemes;
 
 import android.util.Log;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 
 
@@ -12,13 +14,13 @@ import java.io.UnsupportedEncodingException;
 class MuxChannelZero
 	extends Connection.MuxChannel
 {
-	private final static byte msg_Request  = 0x00;
-	private final static byte msg_Response = 0x01;
-	private final static byte msg_Error    = 0x02;
+	private final static byte msgRequest  = 0x00;
+	private final static byte msgResponse = 0x01;
+	private final static byte msgError    = 0x02;
 
-	private final static int req_open = 0x6f70656e;
-	private final static int req_clse = 0x636c7365;
-	private final static int req_ping = 0x70696e67;
+	private final static int reqOpen = 0x6f70656e;
+	private final static int reqClse = 0x636c7365;
+	private final static int reqPing = 0x70696e67;
 
 	private final static short ERR_UNSUPPORTED_REQTYPE = 1;
 	private final static short ERR_NO_SUCH_SERVICE     = 2;
@@ -30,6 +32,15 @@ class MuxChannelZero
 
 	/** The tag used for logging. */
 	private final static String TAG = "MuxChannelZero";
+
+
+
+
+
+	/** Exception that is thrown if the remote asks for an unknown service. */
+	private class NoSuchServiceException extends Exception
+	{
+	}
 
 
 
@@ -56,17 +67,17 @@ class MuxChannelZero
 		}
 		switch (aMessage[0])
 		{
-			case msg_Request:
+			case msgRequest:
 			{
 				handleRequest(aMessage);
 				break;
 			}
-			case msg_Response:
+			case msgResponse:
 			{
 				handleResponse(aMessage);
 				break;
 			}
-			case msg_Error:
+			case msgError:
 			{
 				handleError(aMessage);
 				break;
@@ -77,6 +88,16 @@ class MuxChannelZero
 				break;
 			}
 		}
+	}
+
+
+
+
+
+	@Override
+	void initialize(byte[] aServiceInitData) throws ServiceInitFailedException
+	{
+		throw new ServiceInitFailedException("MuxChannelZero expects no initialization");
 	}
 
 
@@ -102,17 +123,17 @@ class MuxChannelZero
 		}
 		switch (requestType)
 		{
-			case req_open:
+			case reqOpen:
 			{
 				handleOpenRequest(requestID, bar);
 				break;
 			}
-			case req_clse:
+			case reqClse:
 			{
 				handleCloseRequest(requestID, bar);
 				break;
 			}
-			case req_ping:
+			case reqPing:
 			{
 				handlePingRequest(requestID, aMessage);
 				break;
@@ -184,8 +205,69 @@ class MuxChannelZero
 			sendError(aRequestID, ERR_MALFORMED_REQUEST, "Malformed `open` message (incomplete).");
 			return;
 		}
-		// TODO: Look up the service
-		sendError(aRequestID, ERR_NO_SUCH_SERVICE, "No such service: " + svcName);
+
+		// Create the new channel:
+		Connection.MuxChannel newChannel;
+		try
+		{
+			newChannel = createChannel(svcName, svcInitData);
+		}
+		catch (NoSuchServiceException exc)
+		{
+			sendError(aRequestID, ERR_NO_SUCH_SERVICE, "No such service: " + svcName);
+			return;
+		}
+		catch (ServiceInitFailedException exc)
+		{
+			sendError(aRequestID, ERR_SERVICE_INIT_FAILED, "Service init failed: " + exc.getMessage());
+			return;
+		}
+		catch (ServiceInitNoPermissionException exc)
+		{
+			sendError(aRequestID, ERR_NO_PERMISSION, exc.getMessage());
+			return;
+		}
+
+		// Register the new channel within the parent Connection:
+		try
+		{
+			newChannel.mChannelID = mConnection.registerChannel(newChannel);
+		}
+		catch (Connection.NoAvailableChannelIDException exc)
+		{
+			sendError(aRequestID, ERR_NO_CHANNEL_ID, "Too many open channels, no free ID to assign to the new channel");
+			return;
+		}
+		sendResponse(aRequestID, Utils.encodeBE16(newChannel.mChannelID));
+	}
+
+
+
+
+
+	/** Creates a new MuxChannel for the specified service. */
+	private Connection.MuxChannel createChannel(String aSvcName, byte[] aSvcInitData)
+		throws NoSuchServiceException, ServiceInitFailedException, ServiceInitNoPermissionException
+	{
+		switch (aSvcName)
+		{
+			case "info": return initChannel(new MuxChannelInfo(mConnection), aSvcInitData);
+			// TODO: Other services
+		}
+		throw new NoSuchServiceException();
+	}
+
+
+
+
+
+	/** Initializes the specified channel and returns it.
+	Helper function so that createChannel() has a nicer format. */
+	private Connection.MuxChannel initChannel(Connection.MuxChannel aMuxChannel, byte[] aSvcInitData)
+		throws ServiceInitFailedException, ServiceInitNoPermissionException
+	{
+		aMuxChannel.initialize(aSvcInitData);
+		return aMuxChannel;
 	}
 
 
@@ -227,6 +309,27 @@ class MuxChannelZero
 
 
 
+	/** Sends a Success response to the remote, with the specified payload. */
+	private void sendResponse(byte aRequestID, byte[] aPayload)
+	{
+		ByteArrayOutputStream resp = new ByteArrayOutputStream(aPayload.length + 1);
+		resp.write(msgResponse);
+		resp.write(aRequestID);
+		try
+		{
+			resp.write(aPayload);
+		}
+		catch (IOException exc)
+		{
+			Log.d(TAG, "Failed to write payload to response", exc);
+		}
+		sendMessage(resp.toByteArray());
+	}
+
+
+
+
+
 	/** Sends an Error response to the remote. */
 	private void sendError(byte aRequestID, short aErrorCode, String aErrorMessage)
 	{
@@ -243,7 +346,7 @@ class MuxChannelZero
 		}
 		int len = errMsg.length;
 		byte[] resp = new byte[len + 4];
-		resp[0] = msg_Error;
+		resp[0] = msgError;
 		resp[1] = aRequestID;
 		resp[2] = (byte) (aErrorCode / 256);
 		resp[3] = (byte) (aErrorCode % 0xff);
@@ -259,12 +362,10 @@ class MuxChannelZero
 	private void handlePingRequest(byte aRequestID, byte[] aMessage)
 	{
 		byte[] resp = new byte[aMessage.length - 4];
-		resp[0] = msg_Response;
+		resp[0] = msgResponse;
 		resp[1] = aRequestID;
 		int len = resp.length - 2;
 		System.arraycopy(aMessage, 6, resp, 2, len);
 		sendMessage(resp);
 	}
-
-
 }

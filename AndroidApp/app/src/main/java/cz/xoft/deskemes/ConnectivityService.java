@@ -25,6 +25,38 @@ public class ConnectivityService extends Service
 	/** The manager of all TCP connections. */
 	private ConnectionMgr mConnectionMgr;
 
+	static private Context mContext;
+
+
+
+
+
+	public ConnectivityService()
+	{
+		mContext = this;
+	}
+
+
+
+
+
+	public static Context getContext()
+	{
+		if (mContext == null)
+		{
+			// Log with stacktrace:
+			try
+			{
+				throw new Exception();
+			}
+			catch (Exception exc)
+			{
+				Log.d(TAG, "Attempting to query the context without having been set", exc);
+			}
+		}
+		return mContext;
+	}
+
 
 
 

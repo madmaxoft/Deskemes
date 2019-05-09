@@ -47,6 +47,27 @@ class Connection
 		short mChannelID;
 
 
+		/** Exception that is thrown if a MuxChannel fails to open the service. */
+		class ServiceInitFailedException extends Exception
+		{
+			ServiceInitFailedException(String aMessage)
+			{
+				super(aMessage);
+			}
+		}
+
+		/** Exception that is thrown if a MuxChannel fails to open the service due to missing (Android) permissions.
+		The exception message is mis-used to store the missing permission's identifier. */
+		class ServiceInitNoPermissionException extends Exception
+		{
+			ServiceInitNoPermissionException(String aMissingPermission)
+			{
+				super(aMissingPermission);
+			}
+		}
+
+
+
 
 
 		/** Creates a new instance bound to the specified connection. */
@@ -66,11 +87,22 @@ class Connection
 
 
 
+		/** Called by the muxer when a new channel is requested; passes the remote-specified init data. */
+		abstract void initialize(byte[] aServiceInitData) throws ServiceInitFailedException, ServiceInitNoPermissionException;
+
 		/** Sends the specified message to the remote. */
 		void sendMessage(byte[] aMessage)
 		{
 			mConnection.sendMuxMessage(mChannelID, aMessage);
 		}
+	}
+
+
+
+
+	/** Exception that is thrown if there is no available ChannelID for a new channel registration. */
+	class NoAvailableChannelIDException extends Exception
+	{
 	}
 
 
@@ -561,6 +593,23 @@ class Connection
 	MuxChannel muxChannelByID(short aChannelID)
 	{
 		return mMuxChannels.get(aChannelID);
+	}
+
+
+
+
+
+	short registerChannel(MuxChannel aNewChannel) throws NoAvailableChannelIDException
+	{
+		for (int i = 1; i < 65536; ++i)
+		{
+			if (mMuxChannels.get((short)i) == null)
+			{
+				mMuxChannels.put((short)i, aNewChannel);
+				return (short)i;
+			}
+		}
+		throw new NoAvailableChannelIDException();
 	}
 
 

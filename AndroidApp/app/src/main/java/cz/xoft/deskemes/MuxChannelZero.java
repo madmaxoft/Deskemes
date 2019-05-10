@@ -252,6 +252,7 @@ class MuxChannelZero
 		switch (aSvcName)
 		{
 			case "info": return initChannel(new MuxChannelInfo(mConnection), aSvcInitData);
+			case "sms.send": return initChannel(new MuxChannelSendText(mConnection), aSvcInitData);
 			// TODO: Other services
 		}
 		throw new NoSuchServiceException();

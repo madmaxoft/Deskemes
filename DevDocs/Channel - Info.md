@@ -1,15 +1,17 @@
-== The Info channel ==
+# The Info channel
+
+  Channel type identifier: `info`
 
   The Info channel is used to query overall status information from the device, such as battery level, signal strength, carrier, phone number, IMEI etc. Some of this information makes sense to query just once, other parts are likely to be queried periodically. The protocol is simple enough to accommodate both use-cases.
 
   The desktop client issues requests for values, the phone app replies with values. The protocol doesn't provide a dialog matching, a reply doesn't have any linkage to the request. When the client requests a value, it simply means "give me the value as soon as you can", and the app replying means "this is the value at current time". The app needn't respond to a particular value (eg. if it doesn't know or have such a value) and there's no way for the client to know whether the value will come or not.
 
-  The values are assigned a 4-byte identifier (represented here as 4 ASCII characters), for example, "batl" for battery level. A value can hold an unsigned integer (8-, 16-, 32- and 64-bit), a fixed-point number (16.16-bit or 32.32-bit) or a string. The datatype is transmitted along with the value and the protocol doesn't restrict the datatype from changing from one query to another, although practically no such use-case makes sense.
+  The values are assigned a 4-byte identifier (represented here as 4 ASCII characters), for example, "batl" for battery level. A value can hold a signed integer (8-, 16-, 32- and 64-bit), a signed fixed-point number (15.16-bit or 31.32-bit) or a string. The datatype is transmitted along with the value and the protocol doesn't restrict the datatype from changing from one query to another, although practically no such use-case makes sense.
 
   Any initialization data sent to the channel at its creation is ignored.
 
 
-=== Request format ===
+## Request format
 
   The desktop client simply sends a message that is a multiple of 4 bytes long. Each successive 4-byte value is interpreted as an identifier mask, where all characters are interpreted as-is, only the question-mark character is a wildcard that matches any character. The app then matches the mask against all the value's identifiers it supports and sends all matched values to the client.
 
@@ -20,7 +22,7 @@
 | `????`    | All values                  |
 
 
-=== Response format ===
+## Response format
 
   The app sends values in the following format:
 
@@ -74,4 +76,3 @@
 | `geom`          | The geometry of all the displays (pos, size, dpi)   |
 | `uptm`          | The device's uptime, in minutes                     |
 | `time`          | The current datetime on the device (unixtime)       |
-

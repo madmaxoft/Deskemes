@@ -257,6 +257,7 @@ set(DEVDOCS
 	../DevDocs/Architecture.md
 	../DevDocs/Connection.md
 	"../DevDocs/Channel - Info.md"
+	"../DevDocs/Channel - SMS send.md"
 )
 
 if(WIN32)

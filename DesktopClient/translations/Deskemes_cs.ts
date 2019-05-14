@@ -94,6 +94,37 @@
     </message>
 </context>
 <context>
+    <name>DlgSendText</name>
+    <message>
+        <source>Dialog</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>To:</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Text:</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>From:</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&amp;Send</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Characters: %1 / Messages: %2</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
     <name>NewDeviceWizard</name>
     <message>
         <source>Deskemes: Add new device</source>
@@ -319,6 +350,22 @@ Check that the key displayed here matches the key displayed on your device.</sou
     </message>
     <message>
         <source>Ctrl+N</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&amp;Message</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&amp;Send new...</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Send a new text message</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Ctrl+M</source>
         <translation type="unfinished"></translation>
     </message>
 </context>

@@ -154,6 +154,7 @@ set(SOURCES
 	src/Comm/UsbDeviceEnumerator.cpp
 
 	# The Comm Channel protocols:
+	src/Comm/Channels/ChannelSmsSend.cpp
 	src/Comm/Channels/InfoChannel.cpp
 
 	# DB-related sources:
@@ -164,6 +165,7 @@ set(SOURCES
 	src/DB/DeviceBlacklist.cpp
 
 	# The UI sources:
+	src/UI/DlgSendText.cpp
 	src/UI/NewDeviceWizard.cpp
 	src/UI/WgtDevice.cpp
 	src/UI/WndDevices.cpp
@@ -199,6 +201,7 @@ set(HEADERS
 	src/Comm/UsbDeviceEnumerator.hpp
 
 	# The Comm Channel protocols:
+	src/Comm/Channels/ChannelSmsSend.hpp
 	src/Comm/Channels/InfoChannel.hpp
 
 	# DB-related headers:
@@ -209,6 +212,7 @@ set(HEADERS
 	src/DB/DeviceBlacklist.hpp
 
 	# The UI headers:
+	src/UI/DlgSendText.hpp
 	src/UI/NewDeviceWizard.hpp
 	src/UI/WgtDevice.hpp
 	src/UI/WndDevices.hpp
@@ -235,6 +239,7 @@ set(HEADERS
 )
 
 set(UI
+	src/UI/DlgSendText.ui
 	src/UI/WgtDevice.ui
 	src/UI/WndDevices.ui
 

@@ -110,6 +110,10 @@ public:
 	Asserts that the protocol is still in the cleartext phase and StartTls hasn't been sent. */
 	Q_INVOKABLE void sendLocalPublicKey();
 
+	/** Sends the `pair` request to the remote.
+	The remote should notify the user and ask them for pairing approval. */
+	Q_INVOKABLE void sendPairingRequest();
+
 	/** Called by the UI when the pairing has been approved locally.
 	Stores the pairing in DevicePairings and sends the StartTLS request to the device. */
 	Q_INVOKABLE void localPairingApproved();

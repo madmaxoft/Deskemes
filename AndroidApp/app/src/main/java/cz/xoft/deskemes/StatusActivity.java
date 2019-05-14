@@ -2,13 +2,14 @@ package cz.xoft.deskemes;
 
 import android.app.Activity;
 import android.os.Bundle;
+import android.support.v7.app.AppCompatActivity;
 import android.view.WindowManager;
 
 
 
 
 
-public class StatusActivity extends Activity
+public class StatusActivity extends AppCompatActivity
 {
 
 	@Override

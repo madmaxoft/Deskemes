@@ -527,6 +527,16 @@ void Connection::sendLocalPublicKey()
 
 
 
+void Connection::sendPairingRequest()
+{
+	qDebug() << "Sending pairing request";
+	sendCleartextMessage("pair"_4cc);
+}
+
+
+
+
+
 void Connection::localPairingApproved()
 {
 	assert(
@@ -719,7 +729,7 @@ bool Connection::extractAndHandleCleartextMessage()
 void Connection::handleCleartextMessage(const quint32 aMsgType, const QByteArray & aMsg)
 {
 	// DEBUG:
-	// qDebug() << "Received cleartext message " << Utils::writeBE32(aMsgType);
+	qDebug() << "Received cleartext message " << Utils::writeBE32(aMsgType);
 
 	if (!mHasReceivedIdentification && (aMsgType != "dsms"_4cc))
 	{
@@ -865,6 +875,9 @@ void Connection::sendCleartextMessage(quint32 aMsgType, const QByteArray & aMsg)
 		assert(!"TLS start has already been requested");
 		return;
 	}
+
+	// DEBUG:
+	qDebug() << "Sending cleartext message " << Utils::writeBE32(aMsgType);
 
 	QByteArray packet = Utils::writeBE32(aMsgType);
 	Utils::writeBE16Lstring(packet, aMsg);

@@ -4,6 +4,7 @@ import android.app.ActivityManager;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
+import android.os.Binder;
 import android.os.IBinder;
 import android.util.Log;
 
@@ -13,6 +14,26 @@ import android.util.Log;
 
 public class ConnectivityService extends Service
 {
+	/** A simple Binder that allows access to the underlying service directly. */
+	public class Binder extends android.os.Binder
+	{
+		ConnectivityService mService;
+
+		Binder(ConnectivityService aService)
+		{
+			mService = aService;
+		}
+
+		public ConnectivityService service()
+		{
+			return mService;
+		}
+	}
+
+
+
+
+
 	/** The tag used for logging. */
 	private static String TAG = "ConnectivityService";
 
@@ -25,36 +46,53 @@ public class ConnectivityService extends Service
 	/** The manager of all TCP connections. */
 	private ConnectionMgr mConnectionMgr;
 
-	static private Context mContext;
+	/** The settings for the service. */
+	private ServiceSettings mSettings;
+
+	/** The manager of the approved peers. */
+	private ApprovedPeers mApprovedPeers;
+
+	/** The Binder used to access the service through binding. */
+	private IBinder mBinder = new Binder(this);
 
 
 
 
 
+	/** Creates (the only) instance of this service.
+	Called by the OS when the service is started. */
 	public ConnectivityService()
 	{
-		mContext = this;
 	}
 
 
 
 
 
-	public static Context getContext()
+	/** Returns the connection manager used within the service. */
+	ConnectionMgr connectionMgr()
 	{
-		if (mContext == null)
-		{
-			// Log with stacktrace:
-			try
-			{
-				throw new Exception();
-			}
-			catch (Exception exc)
-			{
-				Log.d(TAG, "Attempting to query the context without having been set", exc);
-			}
-		}
-		return mContext;
+		return mConnectionMgr;
+	}
+
+
+
+
+
+	/** Returns the approved peers manager used within the service. */
+	ApprovedPeers approvedPeers()
+	{
+		return mApprovedPeers;
+	}
+
+
+
+
+
+	/** Returns the ServiceSettings used within the service. */
+	public ServiceSettings settings()
+	{
+		return mSettings;
 	}
 
 
@@ -64,11 +102,6 @@ public class ConnectivityService extends Service
 	@Override
 	public int onStartCommand(Intent intent, int flags, int startId)
 	{
-		/*
-		mShouldRestartSocketListen = true;
-		Log.i("UDP", "Service started");
-		return START_STICKY;
-		*/
 		return START_STICKY;
 	}
 
@@ -79,8 +112,10 @@ public class ConnectivityService extends Service
 	@Override
 	public void onCreate()
 	{
+		mSettings = new ServiceSettings(this);
+		mApprovedPeers = new ApprovedPeers(this);
 		mUdpListenerThread = new UdpListenerThread();
-		mConnectionMgr = new ConnectionMgr();
+		mConnectionMgr = new ConnectionMgr(this, mApprovedPeers, mSettings);
 		mAddressBlacklistBeaconFilter = new AddressBlacklistBeaconFilter(mConnectionMgr);
 		mUdpListenerThread.setBeaconNotificationConsumer(mAddressBlacklistBeaconFilter);
 		mConnectionMgr.setAddressBlacklist(mAddressBlacklistBeaconFilter);
@@ -170,7 +205,6 @@ public class ConnectivityService extends Service
 	@Override
 	public IBinder onBind(Intent intent)
 	{
-		// TODO: Return the communication channel to the service.
-		throw new UnsupportedOperationException("Not yet implemented");
+		return mBinder;
 	}
 }

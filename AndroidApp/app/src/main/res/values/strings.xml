@@ -1,3 +1,17 @@
 <resources>
 	<string name="app_name">Deskemes</string>
+	<string name="pairing_notification_text">wants to control this device, allow?</string>
+	<string name="approve_peer_header">Incoming connection request from</string>
+	<string name="approve_peer_instructions">Please verify that the picture below matches the picture shown on your computer. A different picture means that someone is listening in on this connection.</string>
+	<string name="approve_peer_btn_allow">Allow</string>
+	<string name="approve_peer_btn_forbid">Forbid</string>
+	<string name="approve_peer_are_same">The images are the same</string>
+	<string name="approve_peer_need_to_check">Please check that the images are the same</string>
+	<string name="approve_peer_progress_generating_image">Generating thumbprint image...</string>
+	<string name="approve_peer_progress_generating_keypair">Generating cryptographic keys...</string>
+	<string name="approve_peer_progress_connecting_service">Querying the Connectivity service...</string>
+	<string name="approve_peer_err_local_keypair">Failed to create cryptographic keys for the session.</string>
+	<string name="approve_peer_failed">Cannot approve connection</string>
+	<string name="approve_peer_err_thumbprint_algorithm">Failed to generate the thumbprint image, cannot initialize cryptography algorithm</string>
+	<string name="approve_peer_err_store_try_again">Failed to save approval, please try again.</string>
 </resources>

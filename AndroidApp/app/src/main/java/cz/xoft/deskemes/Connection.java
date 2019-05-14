@@ -1,6 +1,11 @@
 package cz.xoft.deskemes;
 
 
+import android.app.PendingIntent;
+import android.content.Context;
+import android.content.Intent;
+import android.support.v4.app.NotificationCompat;
+import android.support.v4.app.NotificationManagerCompat;
 import android.util.Log;
 
 import java.io.IOException;
@@ -109,17 +114,11 @@ class Connection
 
 
 
-	private enum State
-	{
-		Initial,
-		Encrypted,
-	}
-
-
 	// The individual cleartext message types (translated from ASCII strings to ints):
 	private final static int msg_dsms = 0x64736d73;
 	private final static int msg_fnam = 0x666e616d;
 	private final static int msg_avtr = 0x61767472;
+	private final static int msg_pair = 0x70616972;
 	private final static int msg_pubi = 0x70756269;
 	private final static int msg_pubk = 0x7075626b;
 	private final static int msg_stls = 0x73746c73;
@@ -129,6 +128,12 @@ class Connection
 
 	/** The tag used for logging. */
 	private final static String TAG = "Connection";
+
+	/** The ID used for the notifications. */
+	private final int mNotificationID = 1;
+
+	/** The settings for the app. */
+	private ServiceSettings mSettings;
 
 	/** The NIO channel used for the connection. */
 	private SocketChannel mChannel;
@@ -150,15 +155,6 @@ class Connection
 	/** The PacketBuilder used by sendCleartextMessage to compose the raw packet in mOutgoingData from mOutgoingPacket. */
 	private PacketBuilder mOutgoingDataPacketBuilder;
 
-	/** Temporary buffer for building a single packet. */
-	private ByteBuffer mOutgoingPacket;
-
-	/** The PacketBuilder that builds packets inside mOutgoingPacket. */
-	private PacketBuilder mPacketBuilder;
-
-	/** The connection state */
-	private State mState = State.Initial;
-
 	/** The remote address to which the connection will be made in the register() call. */
 	private final InetSocketAddress mRemoteAddress;
 
@@ -167,7 +163,21 @@ class Connection
 
 	/** Set to true once the `dsms` packet is received.
 	Used to check that the `dsms` packet is the first one received; if not, the connection is aborted. */
-	private boolean mHasReceivedDsms;
+	private boolean mHasReceivedDsms = false;
+
+	/** Set to true once the `stls` message is received from the remote.
+	Once true, all incoming data needs to be passed through TLS decoder.
+	However, outgoing data may still be sent in cleartext (eg. pairing request) until we send the `stls` message. */
+	private boolean mHasReceivedStls = false;
+
+	/** Set to true once we send the `stls` message to the remote.
+	Once true, all outgoing data needs to be passed through TLS encoder.
+	However, incoming data may still be sent in cleartext (eg. pairing request) until we receive the `stls` message.
+	See also mHasReceivedStls. */
+	private boolean mHasSentStls = false;
+
+	/** The name of the remote to be potentially shown to the user. */
+	private String mFriendlyName;
 
 	/** The PublicID presented by the remote in the `pubi` cleartext message. */
 	private byte[] mRemotePublicID;
@@ -176,11 +186,18 @@ class Connection
 	Will be checked against the `pubi` cleartext message. */
 	private final byte[] mBeaconPublicID;
 
+	/** If mBeaconPublicID is already approved, contains the full approval information.
+	Null if not approved yet. */
+	private ApprovedPeers.Peer mApprovedPeer;
+
 	/** The PublicKey presented by the remote in the `pubk` cleartext message. */
 	private byte[] mRemotePublicKey;
 
 	/** All the currently opened mux-protocol channels, indexed by their ChannelID. */
 	private Map<Short, MuxChannel> mMuxChannels;
+
+	/** The Context used for Android API calls. */
+	private final Context mContext;
 
 	/** The ConnectionMgr that takes care of this connection. */
 	private ConnectionMgr mConnMgr;
@@ -190,20 +207,54 @@ class Connection
 
 
 	/** Creates a new instance that will connect to aRemoteAddress, and expect to find aBeaconPublicID there. */
-	Connection(ConnectionMgr aConnMgr, InetSocketAddress aRemoteAddress, byte[] aBeaconPublicID)
+	Connection(
+		Context aContext,
+		ServiceSettings aSettings,
+		ConnectionMgr aConnMgr,
+		InetSocketAddress aRemoteAddress,
+		byte[] aBeaconPublicID,
+		ApprovedPeers.Peer aPeer
+	)
 	{
+		mContext = aContext;
+		mSettings = aSettings;
 		mConnMgr = aConnMgr;
 		mRemoteAddress = aRemoteAddress;
 		mBeaconPublicID = aBeaconPublicID;
+		mApprovedPeer = aPeer;
 		mIncomingData = ByteBuffer.allocate(MAX_INCOMING_DATA);
 		mIncomingData.order(ByteOrder.BIG_ENDIAN);
 		mOutgoingData = ByteBuffer.allocate(MAX_OUTGOING_DATA);
 		mOutgoingData.order(ByteOrder.BIG_ENDIAN);
-		mOutgoingPacket = ByteBuffer.allocate(1000);
-		mOutgoingPacket.order(ByteOrder.BIG_ENDIAN);
-		mPacketBuilder = new PacketBuilder(mOutgoingPacket);
 		mOutgoingDataPacketBuilder = new PacketBuilder(mOutgoingData);
 		mMuxChannels = new HashMap<>();
+	}
+
+
+
+
+
+	byte[] remotePublicID()
+	{
+		return mRemotePublicID;
+	}
+
+
+
+
+
+	InetAddress remoteAddress()
+	{
+		return mRemoteAddress.getAddress();
+	}
+
+
+
+
+
+	Context context()
+	{
+		return mContext;
 	}
 
 
@@ -300,19 +351,15 @@ class Connection
 	Returns true if any data was extracted, false if there is not enough data for a complete protocol message. */
 	private boolean extractAndProcessIncomingData()
 	{
-		switch (mState)
+		if (mHasReceivedStls)
 		{
-			case Initial:
-			{
-				return extractAndHandleCleartextMessage();
-			}
-			case Encrypted:
-			{
-				// TODO: TLS and extract+process
-				return extractAndHandleMuxMessage();
-			}
+			// TODO: TLS and extract+process
+			return extractAndHandleMuxMessage();
 		}
-		return false;
+		else
+		{
+			return extractAndHandleCleartextMessage();
+		}
 	}
 
 
@@ -374,8 +421,8 @@ class Connection
 			case msg_pubi: handlePubiMessage(aMsgData); break;
 			case msg_pubk: handlePubkMessage(aMsgData); break;
 			case msg_stls: handleStlsMessage(aMsgData); break;
-
-			case msg_fnam: // handleFnamMessage(aMsgData); break;
+			case msg_fnam: handleFnamMessage(aMsgData); break;
+			case msg_pair: handlePairMessage(aMsgData); break;
 			case msg_avtr: // handleAvtrMessage(aMsgData); break;
 				// TODO: dummy
 				Log.d(TAG, "Ignoring message");
@@ -393,6 +440,29 @@ class Connection
 
 
 
+	/** Handles the `fnam` cleartext protocol message.
+	Stores the received friendly name. */
+	private void handleFnamMessage(byte[] aMsgData)
+	{
+		mFriendlyName = Utils.utf8ToString(aMsgData);
+	}
+
+
+
+
+
+	/** Handles the `pair` cleartext protocol message.
+	Notifies the user that there's a pairing request. */
+	private void handlePairMessage(byte[] aMsgData)
+	{
+		mApprovedPeer = null;  // Clear any pairing we might have had for this connection
+		notifyUserUnapprovedPeer();
+	}
+
+
+
+
+
 	/** Handles the `pubi` cleartext protocol message.
 	Verifies that the public ID is the same as received in the beacon.
 	TODO: Checks with the known remotes list to see if we should pair immediately. */
@@ -404,9 +474,6 @@ class Connection
 			close();
 			return;
 		}
-		// TODO: Check the known remotes list
-		mOutgoingPacket.put(Utils.stringToUtf8("DummyPublicKey"));
-		sendCleartextMessage("pubk");
 	}
 
 
@@ -424,16 +491,30 @@ class Connection
 			return;
 		}
 		mRemotePublicKey = aMsgData;
-		// TODO: Check if we even want to connect to this device.
-		// If yes, generate our own public key and send it
-		sendCleartextMessage("stls");
+
+		if (mApprovedPeer == null)
+		{
+			// Not approved yet, wait until it asks for TLS, then show a pairing request UI
+			return;
+		}
+		if (!Arrays.equals(mApprovedPeer.mRemotePublicKeyData, aMsgData))
+		{
+			// The public key doesn't match what we were paired against; most likely a MITM
+			// Handle the same way as non-approved for now
+			notifyUserUnapprovedPeer();
+			mApprovedPeer = null;
+			return;
+		}
+
+		// Send our own  pubkey:
+		sendCleartextMessage("pubk", mApprovedPeer.mLocalPublicKeyData);
 	}
 
 
 
 
 
-	/** Handles the `tsls` cleartext protocol message.
+	/** Handles the `stls` cleartext protocol message.
 	Checks that we have everything needed for TLS, then switches to the TLS Mux protocol. */
 	private void handleStlsMessage(byte[] aMsgData)
 	{
@@ -443,10 +524,65 @@ class Connection
 			close();
 			return;
 		}
+
+		mHasReceivedStls = true;
+		if (mApprovedPeer == null)
+		{
+			// Remote has an approval, but we don't. Inform the remote that we're pairing
+			notifyUserUnapprovedPeer();
+			sendCleartextMessage("pair");
+			return;
+		}
+
 		Log.d(TAG, "Starting TLS, msgData length = " + aMsgData.length);
+
+		if (!mHasSentStls)
+		{
+			sendCleartextMessage("stls");
+		}
+
 		// TODO: TLS
-		mState = State.Encrypted;
 		mMuxChannels.put((short)0, new MuxChannelZero(this));
+	}
+
+
+
+
+
+	/** Displays a UI notification that an unapproved peer is attempting connection. */
+	private void notifyUserUnapprovedPeer()
+	{
+		Log.d(TAG, "Remote " + mFriendlyName + " (" + mRemoteAddress + ") is trying to connect, but is not paired, creating pairing notification.");
+
+		if (mFriendlyName == null)
+		{
+			// Don't want to show name-less requests
+			return;
+		}
+
+		Intent intent = new Intent(mContext, ApprovePeerActivity.class);
+		intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+		intent.putExtra("RemoteFriendlyName", mFriendlyName);
+		intent.putExtra("RemoteAddress", mRemoteAddress.toString());
+		intent.putExtra("RemotePublicID", mRemotePublicID);
+		intent.putExtra("RemotePublicKey", mRemotePublicKey);
+		PendingIntent pendingIntent = PendingIntent.getActivity(mContext, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
+
+		String txt = mContext.getResources().getString(R.string.pairing_notification_text);
+		NotificationCompat.Builder nb = new NotificationCompat.Builder(mContext)
+			.setSmallIcon(R.drawable.pairing_notification)
+			.setContentIntent(pendingIntent)
+			.setAutoCancel(true)
+			.setContentText(txt)
+			.setContentTitle(mFriendlyName);
+
+		NotificationManagerCompat notificationManager = NotificationManagerCompat.from(mContext);
+		notificationManager.notify(mNotificationID, nb.build());
+
+		// We cannot allow an attacker to DoS this device by simply requesting pairings for many public IDs
+		// We need to wait with the generating until the user actually initiates the approval.
+		// But we can still send the `pair` message to let the other side know that we'll be pairing.
+		sendCleartextMessage("pair");
 	}
 
 
@@ -473,16 +609,12 @@ class Connection
 			mHasReceivedDsms = true;
 
 			// Send our own `dsms` packet:
-			mPacketBuilder.writeAsciiLiteral("Deskemes");
-			mOutgoingPacket.putShort((short)1);
-			sendCleartextMessage("dsms");
+			byte[] packet = {0x44, 0x65, 0x73, 0x6b, 0x65, 0x6d, 0x65, 0x73, 0x00, 0x01};
+			sendCleartextMessage("dsms", packet);
 
 			// Send our info:
-			// TODO: Proper values and wait with pubk / stls until proper time
-			mOutgoingPacket.put(Utils.stringToUtf8("DummyFriendlyName"));
-			sendCleartextMessage("fnam");
-			mOutgoingPacket.put(Utils.stringToUtf8("DummyPublicID"));
-			sendCleartextMessage("pubi");
+			sendCleartextMessage("fnam", Utils.stringToUtf8(mSettings.getFriendlyName()));
+			sendCleartextMessage("pubi", mSettings.getPublicID());
 		}
 		catch (ByteArrayReader.DataEndReachedException exc)
 		{
@@ -495,29 +627,51 @@ class Connection
 
 
 
-	/** Writes the packet data in mOutgoingPacket with the specified aMsgType to mOutgoingData
-	as a next cleartext packet to send. */
+	/** Sends a cleartext packet with no payload. */
 	private void sendCleartextMessage(String aMsgType)
 	{
-		Log.d(TAG, "Sending cleartext message, type " + aMsgType);
-		assert(mState != State.Encrypted);
-		assert(aMsgType.length() == 4);
+		sendCleartextMessage(aMsgType, new byte[]{});
+	}
+
+
+
+
+
+	/** Writes the packet data in aMsgPayload with the specified aMsgType to mOutgoingData
+	as a next cleartext packet to send. */
+	private void sendCleartextMessage(String aMsgType, byte[] aMsgPayload)
+	{
+		Log.d(TAG, "Sending cleartext message, type " + aMsgType + ", data length " + aMsgPayload.length);
+
+		if (mHasSentStls)
+		{
+			Log.d(TAG, "Connection already encrypted.");
+			return;
+		}
+		if (aMsgType.length() != 4)
+		{
+			Log.d(TAG, "Bad message identifier");
+			return;
+		}
 
 		// If the payload is too large, refuse:
-		if (mOutgoingPacket.position() > 65535)
+		if (aMsgPayload.length > 65535)
 		{
 			Log.d(TAG, "Packet payload too large");
 			throw new BufferOverflowException();
 		}
 
 		mOutgoingDataPacketBuilder.writeAsciiLiteral(aMsgType);
-		mOutgoingData.putShort((short)mOutgoingPacket.position());
-		mOutgoingPacket.flip();
-		mOutgoingData.put(mOutgoingPacket);
-		mOutgoingPacket.clear();
+		mOutgoingData.putShort((short)aMsgPayload.length);
+		mOutgoingData.put(aMsgPayload);
 
-		// Assume we've been called from selectedRead() for parsing the protocol, so try writing immediately:
-		selectedWrite();
+		if (aMsgType == "stls")
+		{
+			mHasSentStls = true;
+		}
+
+		mSelectionKey.interestOps(SelectionKey.OP_READ | SelectionKey.OP_WRITE);
+		mConnMgr.wakeUpSelector();
 	}
 
 
@@ -585,8 +739,8 @@ class Connection
 		mOutgoingData.putShort((short)(aMessage.length));
 		mOutgoingData.put(aMessage);
 
-		// Assume we've been called from selectedRead() for parsing the protocol, so try writing immediately:
-		selectedWrite();
+		mSelectionKey.interestOps(SelectionKey.OP_READ | SelectionKey.OP_WRITE);
+		mConnMgr.wakeUpSelector();
 	}
 
 
@@ -653,8 +807,37 @@ class Connection
 
 
 
-	InetAddress remoteAddress()
+	/** If appropriate, sends the pubkey to the remote.
+	Called externally by the peer approval process after the pubkey is generated. */
+	void onPublicKeyGenerated(byte[] aLocalPublicKey)
 	{
-		return mRemoteAddress.getAddress();
+		if (!mHasReceivedDsms || mHasSentStls)
+		{
+			Log.d(TAG, "Don't want public key now");
+			return;
+		}
+		Log.d(TAG, "Sending local public key to " + mRemoteAddress.toString());
+		sendCleartextMessage("pubk", aLocalPublicKey);
+	}
+
+
+
+
+
+	/** If waiting for approval, resumes the connection and starts TLS.
+	Called externally by the peer approval process once the user accepts the peer. */
+	void onPeerApproved(ApprovedPeers.Peer aPeer)
+	{
+		if (
+			mHasSentStls ||
+			(mRemotePublicKey == null)
+		)
+		{
+			return;
+		}
+		mApprovedPeer = aPeer;
+
+		Log.d(TAG, "Starting TLS");
+		sendCleartextMessage("stls");
 	}
 }

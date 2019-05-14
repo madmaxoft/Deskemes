@@ -641,6 +641,7 @@ class Connection
 		}
 
 		// Notify ConnectionMgr:
+		Log.d(TAG, "Connection to " + mRemoteAddress.toString() + " closed.");
 		mConnMgr.connectionClosed(this);
 	}
 

@@ -1,5 +1,6 @@
 package cz.xoft.deskemes;
 
+import android.content.Context;
 import android.util.Log;
 
 import java.io.IOException;
@@ -9,7 +10,7 @@ import java.nio.channels.CancelledKeyException;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
-import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Vector;
 
@@ -58,6 +59,26 @@ public class ConnectionMgr
 	/** The connections that are to be registered once mSelector returns from its select() call. */
 	private final List<Connection> mRegistrationQueue = new Vector<>();
 
+	/** The Context used for Android API calls. */
+	private final Context mContext;
+
+	/** The storage for approved peers. */
+	private ApprovedPeers mApprovedPeers;
+
+	/** The settings to use. */
+	private ServiceSettings mSettings;
+
+
+
+
+
+	public ConnectionMgr(Context aContext, ApprovedPeers aApprovedPeers, ServiceSettings aSettings)
+	{
+		mContext = aContext;
+		mApprovedPeers = aApprovedPeers;
+		mSettings = aSettings;
+	}
+
 
 
 
@@ -70,8 +91,23 @@ public class ConnectionMgr
 			", PublicID 0x" + Utils.bytesToHex(aPublicID) +
 			", version " + aProtocolVersion
 		);
-		// TODO: Do not connect to unknown addresses / IDs unless their IsDiscovery flag is set.
-		queueRegisterConnection(new Connection(this, aAddressToConnect, aPublicID));
+
+		// Check if the peer is approved or we allow discovery:
+		ApprovedPeers.Peer peer = mApprovedPeers.getPeer(aPublicID);
+		if (
+			((peer == null) || !peer.mIsApproved) &&  // The peer is not approved
+			(
+				!aIsDiscovery ||  // Not a discovery packet
+				!mSettings.shouldRespondToDiscovery()  // Not allowed to respond to discovery packets
+			)
+		)
+		{
+			// Bad peer,do not respond
+			return;
+		}
+
+		// Add the new connection:
+		queueRegisterConnection(new Connection(mContext, mSettings, this, aAddressToConnect, aPublicID, peer));
 		mAddressBlacklist.blockAddress(aAddressToConnect.getAddress());
 	}
 
@@ -209,6 +245,7 @@ public class ConnectionMgr
 			return;
 		}
 		aKey.interestOps(SelectionKey.OP_READ);
+		mConnections.add((Connection)aKey.attachment());
 	}
 
 
@@ -239,6 +276,52 @@ public class ConnectionMgr
 	/** Called by the Connection when it is closed, either locally or remotely. */
 	void connectionClosed(Connection aConnection)
 	{
+		mConnections.remove(aConnection);
 		mAddressBlacklist.allowAddress(aConnection.remoteAddress());
+	}
+
+
+
+
+
+	/** Called by the peer approval process once a public key is generated.
+	Walks all connections and notifies the relevant ones. */
+	void onPublicKeyGenerated(byte[] aRemotePublicID, byte[] aLocalPublicKey)
+	{
+		for (Connection conn: mConnections)
+		{
+			if (Arrays.equals(conn.remotePublicID(), aRemotePublicID))
+			{
+				conn.onPublicKeyGenerated(aLocalPublicKey);
+			}
+		}
+	}
+
+
+
+
+
+	/** Called by the peer approval process once the peer is approved by the user.
+	Walks all connections and notifies the relevant ones about the approval. */
+	void onPeerApproved(ApprovedPeers.Peer aPeer)
+	{
+		for (Connection conn: mConnections)
+		{
+			if (Arrays.equals(conn.remotePublicID(), aPeer.mRemotePublicID))
+			{
+				conn.onPeerApproved(aPeer);
+			}
+		}
+	}
+
+
+
+
+
+	/** Wakes up the selector.
+	Needed when pushing data to a connection. */
+	void wakeUpSelector()
+	{
+		mSelector.wakeup();
 	}
 }

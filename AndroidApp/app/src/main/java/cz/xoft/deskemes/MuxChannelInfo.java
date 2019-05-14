@@ -39,19 +39,18 @@ class MuxChannelInfo
 		"time",
 	};
 
-	private static String mImei = getImei();
+	private String mImei;
 
 
 
 
 
 	@SuppressLint ("MissingPermission")
-	private static String getImei()
+	private static String getImei(Context aContext)
 	{
 		try
 		{
-			Context ctx = ConnectivityService.getContext();
-			TelephonyManager telephonyManager = (TelephonyManager)ctx.getSystemService(Context.TELEPHONY_SERVICE);
+			TelephonyManager telephonyManager = (TelephonyManager)aContext.getSystemService(Context.TELEPHONY_SERVICE);
 			return telephonyManager.getDeviceId();
 		}
 		catch (Exception exc)
@@ -68,6 +67,7 @@ class MuxChannelInfo
 	MuxChannelInfo(Connection aConnection)
 	{
 		super(aConnection);
+		mImei = getImei(aConnection.context());
 	}
 
 
@@ -260,7 +260,7 @@ class MuxChannelInfo
 		try
 		{
 			IntentFilter ifilter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
-			Intent batteryStatus = ConnectivityService.getContext().registerReceiver(null, ifilter);
+			Intent batteryStatus = mConnection.context().registerReceiver(null, ifilter);
 			if (batteryStatus == null)
 			{
 				Log.d(TAG, "Failed to query battery status");

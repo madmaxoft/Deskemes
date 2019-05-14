@@ -18,6 +18,24 @@ public class Utils
 
 
 
+	/** Clamps the given value to the given bounds. */
+	public static int clamp(int aValue, int aMin, int aMax)
+	{
+		if (aValue < aMin)
+		{
+			return aMin;
+		}
+		if (aValue > aMax)
+		{
+			return aMax;
+		}
+		return aValue;
+	}
+
+
+
+
+
 	/** Returns true if the specified range in the byte array contains the bytes comprising the specified string.
 	In Lua terms, returns (string.sub(aArray, aStartIdx, aEndIdxIncl) == aString). */
 	public static boolean compareByteArrayToString(byte[] aArray, int aStartIdx, int aEndIdxIncl, String aString)

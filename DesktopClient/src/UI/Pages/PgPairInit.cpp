@@ -56,8 +56,13 @@ void PgPairInit::initializePage()
 				pairings->createLocalKeyPair(conn->remotePublicID().value(), displayName);
 				QMetaObject::invokeMethod(conn.get(), "sendLocalPublicKey");
 				QMetaObject::invokeMethod(this, "localKeyPairCreated");
+				QMetaObject::invokeMethod(conn.get(), "sendPairingRequest");
 			}
 		);
+	}
+	else
+	{
+		conn->sendPairingRequest();
 	}
 	if (conn->remotePublicKeyData().isPresent())
 	{

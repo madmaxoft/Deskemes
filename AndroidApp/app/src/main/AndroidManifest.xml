@@ -14,7 +14,9 @@
 		android:icon="@mipmap/ic_launcher"
 		android:label="@string/app_name"
 		android:roundIcon="@mipmap/ic_launcher_round"
+		android:theme="@style/Theme.AppCompat.Light"
 		tools:ignore="GoogleAppIndexingWarning">
+		<activity android:name=".ApprovePeerActivity"></activity>
 		<activity android:name=".StatusActivity">
 			<intent-filter>
 				<action android:name="android.intent.action.MAIN" />
@@ -35,7 +37,6 @@
 				<action android:name="android.net.wifi.STATE_CHANGE" />
 			</intent-filter>
 		</receiver>
-
 	</application>
 
 </manifest>

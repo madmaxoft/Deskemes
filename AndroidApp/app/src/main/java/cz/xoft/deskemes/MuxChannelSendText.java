@@ -92,6 +92,8 @@ class MuxChannelSendText
 			return;
 		}
 
+		Log.d(TAG, "Want to send SMS to " + recipient + ": " + message);
+
 		try
 		{
 			SmsManager smsManager = SmsManager.getDefault();

@@ -238,6 +238,7 @@ class MuxChannelZero
 			sendError(aRequestID, ERR_NO_CHANNEL_ID, "Too many open channels, no free ID to assign to the new channel");
 			return;
 		}
+		Log.d(TAG, "Opened a new channel ID " + newChannel.mChannelID + ": " + svcName);
 		sendResponse(aRequestID, Utils.encodeBE16(newChannel.mChannelID));
 	}
 

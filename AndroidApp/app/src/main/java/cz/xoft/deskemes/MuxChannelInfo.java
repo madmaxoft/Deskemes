@@ -39,14 +39,14 @@ class MuxChannelInfo
 		"time",
 	};
 
-	private String mImei = getImei();
+	private static String mImei = getImei();
 
 
 
 
 
 	@SuppressLint ("MissingPermission")
-	private String getImei()
+	private static String getImei()
 	{
 		try
 		{
@@ -56,7 +56,7 @@ class MuxChannelInfo
 		}
 		catch (Exception exc)
 		{
-			return null;
+			return "";
 		}
 	}
 
@@ -268,7 +268,6 @@ class MuxChannelInfo
 			}
 			int level = batteryStatus.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
 			int scale = batteryStatus.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
-			Log.d(TAG, "Battery status: " + level + " / " + scale + " (" + (short)((float)level / (float)scale * 100) + " %)");
 			return (short)((float)level / (float)scale * 100);
 		}
 		catch (Exception exc)

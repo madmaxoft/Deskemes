@@ -63,7 +63,14 @@
     <addaction name="separator"/>
     <addaction name="actExit"/>
    </widget>
+   <widget class="QMenu" name="menu_Message">
+    <property name="title">
+     <string>&amp;Message</string>
+    </property>
+    <addaction name="actMessageSendNew"/>
+   </widget>
    <addaction name="menu_Device"/>
+   <addaction name="menu_Message"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
   <action name="actDeviceNew">
@@ -80,6 +87,17 @@
   <action name="actExit">
    <property name="text">
     <string>E&amp;xit</string>
+   </property>
+  </action>
+  <action name="actMessageSendNew">
+   <property name="text">
+    <string>&amp;Send new...</string>
+   </property>
+   <property name="toolTip">
+    <string>Send a new text message</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+M</string>
    </property>
   </action>
  </widget>

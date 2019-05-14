@@ -73,10 +73,11 @@ public:
 		Utils::writeBE16Lstring(req, aServiceInitData);
 		sendRequest("open"_4cc,
 			// Success handler:
-			[this, aChannel](const QByteArray & aAdditionalData)
+			[this, aChannel, serviceName = aServiceName](const QByteArray & aAdditionalData)
 			{
 				aChannel->mChannelID = Utils::readBE16(aAdditionalData);
 				aChannel->mIsOpen = true;
+				qDebug() << "Channel " << serviceName << " acknowledged by the device.";
 				emit channelAcknowledged(aChannel);
 				emit aChannel->opened(aChannel.get());
 			},

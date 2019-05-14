@@ -78,4 +78,8 @@ private slots:
 	/** Opens the New device wizard.
 	Called when the user selects New device from the menu. */
 	void addNewDevice();
+
+	/** Opens the Send message dialog, letting the user send a new text message.
+	Called when the user selects Send new message from the menu. */
+	void sendNewMessage();
 };

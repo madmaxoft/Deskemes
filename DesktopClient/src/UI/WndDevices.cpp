@@ -6,6 +6,7 @@
 #include "../DeviceMgr.hpp"
 #include "WgtDevice.hpp"
 #include "NewDeviceWizard.hpp"
+#include "DlgSendText.hpp"
 
 
 
@@ -23,6 +24,7 @@ WndDevices::WndDevices(ComponentCollection & aComponents, QWidget * aParent):
 	connect(mgr.get(), &DeviceMgr::deviceAdded,   this, &WndDevices::onDeviceAdded);
 	connect(mgr.get(), &DeviceMgr::deviceRemoved, this, &WndDevices::onDeviceRemoved);
 	connect(mUI->actDeviceNew, &QAction::triggered, this, &WndDevices::addNewDevice);
+	connect(mUI->actMessageSendNew, &QAction::triggered, this, &WndDevices::sendNewMessage);
 
 	// Add devices already present:
 	for (const auto & dev: mgr->devices())
@@ -91,4 +93,14 @@ void WndDevices::addNewDevice()
 {
 	NewDeviceWizard wiz(mComponents, this);
 	wiz.exec();
+}
+
+
+
+
+
+void WndDevices::sendNewMessage()
+{
+	DlgSendText dlg(mComponents, this);
+	dlg.exec();
 }

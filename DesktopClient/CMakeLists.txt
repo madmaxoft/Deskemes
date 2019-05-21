@@ -77,7 +77,8 @@ endif()
 
 
 
-include_directories(lib)
+add_subdirectory(lib/PolarSSL     EXCLUDE_FROM_ALL)
+add_subdirectory(lib/PolarSSL-cpp EXCLUDE_FROM_ALL)
 
 
 
@@ -326,7 +327,7 @@ target_link_libraries(Deskemes
 	Qt5::Sql
 	Qt5::Xml
 	${ADDITIONAL_LIBRARIES}
-
+	PolarSSL-cpp
 )
 
 if(MSVC)

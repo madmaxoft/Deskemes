@@ -3,6 +3,7 @@
 #include <QDebug>
 #include <QSqlError>
 #include <QSqlRecord>
+#include "RsaPrivateKey.h"
 #include "../ComponentCollection.hpp"
 #include "Database.hpp"
 
@@ -125,10 +126,16 @@ void DevicePairings::createLocalKeyPair(const QByteArray & aDevicePublicID)
 		return;
 	}
 
-	// TODO: Generate a new keypair
-	qWarning() << "TODO: public key generator not present yet!";
-	QByteArray pubKeyData("DummyPublicKeyData");
-	QByteArray privKeyData("DummyPrivateKeyData");
+	// Generate a new keypair
+	RsaPrivateKey rpk;
+	#ifdef _DEBUG
+		// Generating is very slow in debug builds, use shorter keys
+		rpk.generate(1024);
+	#else
+		rpk.generate(4096);
+	#endif
+	auto pubKeyData  = QByteArray::fromStdString(rpk.getPubKeyDER());
+	auto privKeyData = QByteArray::fromStdString(rpk.getPrivKeyDER());
 
 	// Save the new keypair to the DB
 	auto db = mComponents.get<Database>();

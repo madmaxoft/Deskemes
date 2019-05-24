@@ -1,10 +1,11 @@
 #include "PgPairInit.hpp"
 #include <cassert>
 #include "ui_PgPairInit.h"
-#include "../../Comm/Connection.hpp"
-#include "../NewDeviceWizard.hpp"
+#include "../../Utils.hpp"
 #include "../../BackgroundTasks.hpp"
+#include "../../Comm/Connection.hpp"
 #include "../../DB/DevicePairings.hpp"
+#include "../NewDeviceWizard.hpp"
 
 
 
@@ -41,7 +42,7 @@ void PgPairInit::initializePage()
 	auto conn = mParent.connection();
 	assert(conn->remotePublicID().isPresent());
 	connect(conn.get(), &Connection::receivedPublicKey, this, &PgPairInit::receivedPublicKey);
-	auto displayName = conn->friendlyName().valueOr(QString::fromUtf8(conn->remotePublicID().value()));
+	auto displayName = conn->friendlyName().valueOr(Utils::toHex(conn->remotePublicID().value()));
 	auto pairings = mComponents.get<DevicePairings>();
 	mIsLocalKeyPairCreated = pairings->lookupDevice(conn->remotePublicID().value()).isPresent();
 	if (!mIsLocalKeyPairCreated)
@@ -52,7 +53,7 @@ void PgPairInit::initializePage()
 			[this, conn, displayName, pairings]()
 			{
 				qDebug() << "Sending local public key to " << displayName;
-				pairings->createLocalKeyPair(conn->remotePublicID().value());
+				pairings->createLocalKeyPair(conn->remotePublicID().value(), displayName);
 				QMetaObject::invokeMethod(conn.get(), "sendLocalPublicKey");
 				QMetaObject::invokeMethod(this, "localKeyPairCreated");
 			}

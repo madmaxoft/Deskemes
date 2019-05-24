@@ -51,6 +51,7 @@ public:
 
 	/** Adds / modifies a pairing for the specified device. */
 	void pairDevice(
+		const QString & aFriendlyName,
 		const QByteArray & aDevicePublicID,
 		const QByteArray & aDevicePublicKeyData,
 		const QByteArray & aLocalPublicKeyData,
@@ -59,7 +60,7 @@ public:
 
 	/** Generates a new keypair for the specified device and stores it in the DB.
 	Silently ignored if a keypair for the device already exists. */
-	void createLocalKeyPair(const QByteArray & aDevicePublicID);
+	void createLocalKeyPair(const QByteArray & aDevicePublicID, const QString & aFriendlyName);
 
 
 protected:

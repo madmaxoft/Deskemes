@@ -546,6 +546,7 @@ void Connection::localPairingApproved()
 	assert(!pairing.value().mLocalPrivateKeyData.isEmpty());
 
 	pairings->pairDevice(
+		mFriendlyName.valueOr(Utils::toHex(id)),
 		id,
 		mRemotePublicKeyData.value(),
 		pairing.value().mLocalPublicKeyData,

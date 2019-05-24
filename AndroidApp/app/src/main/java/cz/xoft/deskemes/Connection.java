@@ -232,7 +232,11 @@ class Connection
 		assert(mIncomingData.limit() == MAX_INCOMING_DATA);  // The buffer is in fill-mode
 
 		// Read and process the data:
-		mChannel.read(mIncomingData);
+		if (mChannel.read(mIncomingData) < 0)
+		{
+			close();
+			return;
+		}
 		mIncomingData.flip();  // fill-mode -> read-mode
 		while (true)
 		{

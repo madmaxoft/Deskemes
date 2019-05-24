@@ -289,6 +289,7 @@ private slots:
 
 using ConnectionPtr = std::shared_ptr<Connection>;
 
+Q_DECLARE_METATYPE(Connection *);
 Q_DECLARE_METATYPE(ConnectionPtr);
 
 

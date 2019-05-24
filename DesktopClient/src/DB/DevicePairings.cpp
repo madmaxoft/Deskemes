@@ -83,6 +83,7 @@ Optional<DevicePairings::Pairing> DevicePairings::lookupDevice(const QByteArray 
 
 
 void DevicePairings::pairDevice(
+	const QString & aFriendlyName,
 	const QByteArray & aDevicePublicID,
 	const QByteArray & aDevicePublicKeyData,
 	const QByteArray & aLocalPublicKeyData,
@@ -102,9 +103,10 @@ void DevicePairings::pairDevice(
 	{
 		auto query = conn.query(
 			"INSERT INTO DevicePairings "
-			"(DeviceID, DevicePublicKeyData, LocalPublicKeyData, LocalPrivateKeyData) "
-			"VALUES (?, ?, ?, ?)"
+			"(FriendlyName, DeviceID, DevicePublicKeyData, LocalPublicKeyData, LocalPrivateKeyData) "
+			"VALUES (?, ?, ?, ?, ?)"
 		);
+		query.addBindValue(aFriendlyName);
 		query.addBindValue(aDevicePublicID);
 		query.addBindValue(aDevicePublicKeyData);
 		query.addBindValue(aLocalPublicKeyData);
@@ -117,16 +119,17 @@ void DevicePairings::pairDevice(
 
 
 
-void DevicePairings::createLocalKeyPair(const QByteArray & aDevicePublicID)
+void DevicePairings::createLocalKeyPair(const QByteArray & aDevicePublicID, const QString & aFriendlyName)
 {
 	auto oldPairing = lookupDevice(aDevicePublicID);
 	if (oldPairing.isPresent())
 	{
-		qDebug() << "Device " << aDevicePublicID << " already has a keypair. Ignoring creation request.";
+		qDebug() << "Device " << aFriendlyName << " already has a keypair. Ignoring creation request.";
 		return;
 	}
 
 	// Generate a new keypair
+	qDebug() << "Generating keypair...";
 	RsaPrivateKey rpk;
 	#ifdef _DEBUG
 		// Generating is very slow in debug builds, use shorter keys
@@ -136,11 +139,13 @@ void DevicePairings::createLocalKeyPair(const QByteArray & aDevicePublicID)
 	#endif
 	auto pubKeyData  = QByteArray::fromStdString(rpk.getPubKeyDER());
 	auto privKeyData = QByteArray::fromStdString(rpk.getPrivKeyDER());
+	qDebug() << "Keypair generated.";
 
 	// Save the new keypair to the DB
 	auto db = mComponents.get<Database>();
 	auto conn = db->connection();
-	auto query = conn.query("INSERT INTO DevicePairings (DeviceID, LocalPublicKeyData, LocalPrivateKeyData) VALUES (?, ?, ?)");
+	auto query = conn.query("INSERT INTO DevicePairings (FriendlyName, DeviceID, LocalPublicKeyData, LocalPrivateKeyData) VALUES (?, ?, ?, ?)");
+	query.addBindValue(aFriendlyName);
 	query.addBindValue(aDevicePublicID);
 	query.addBindValue(pubKeyData);
 	query.addBindValue(privKeyData);

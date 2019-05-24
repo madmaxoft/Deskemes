@@ -137,6 +137,12 @@ static const std::vector<VersionScript> g_VersionScripts =
 	VersionScript({
 		"ALTER TABLE DevicePairings ADD COLUMN LocalPrivateKeyData BLOB",
 	}),  // Version 2 to Version 3
+
+	// Version 3 to Version 4:
+	// Added FriendlyName to DevicePairings
+	VersionScript({
+		"ALTER TABLE DevicePairings ADD COLUMN FriendlyName",
+	}),  // Version 2 to Version 3
 };
 
 

@@ -104,6 +104,8 @@ int main(int argc, char *argv[])
 		BackgroundTasks::get();
 		qRegisterMetaType<DevicePtr>();
 		qRegisterMetaType<DetectedDevices::DeviceStatusList>();
+		qRegisterMetaType<Connection *>();
+		qRegisterMetaType<ConnectionPtr>();
 		auto instConf = std::make_shared<InstallConfiguration>();
 		Settings::init(instConf->dataLocation("Deskemes.ini"));
 		instConf->loadFromSettings();

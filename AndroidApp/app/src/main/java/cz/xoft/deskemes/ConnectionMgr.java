@@ -168,7 +168,7 @@ public class ConnectionMgr
 		{
 			c.selectedRead();
 		}
-		catch (IOException exc)
+		catch (Exception exc)
 		{
 			Log.d(TAG, "Failed to read data, closing connection", exc);
 			c.close();
@@ -205,6 +205,8 @@ public class ConnectionMgr
 		catch (IOException exc)
 		{
 			Log.d(TAG, "Failed to finish connection", exc);
+			((Connection)aKey.attachment()).close();
+			return;
 		}
 		aKey.interestOps(SelectionKey.OP_READ);
 	}

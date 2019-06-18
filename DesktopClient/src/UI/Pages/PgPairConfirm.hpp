@@ -51,4 +51,8 @@ private:
 
 	/** The Qt-managed UI. */
 	std::unique_ptr<Ui::PgPairConfirm> mUI;
+
+
+	/** Generates the thumbprint image and sets it into the UI. */
+	void setThumbprint();
 };

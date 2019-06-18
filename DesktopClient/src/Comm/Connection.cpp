@@ -466,7 +466,7 @@ void Connection::terminate()
 
 void Connection::requestPairing()
 {
-	assert(mState == csInitial);
+	assert(mState != csEncrypted);
 	setState(csRequestedPairing);
 	emit requestingPairing(this);
 }
@@ -613,7 +613,10 @@ void Connection::checkRemotePublicKeyAndID()
 		// Pairing matches, continue to TLS:
 		setState(csKnownPairing);
 		emit knownPairing(this);
-		sendCleartextMessage("stls"_4cc);
+		if (!mHasSentStartTls)
+		{
+			sendCleartextMessage("stls"_4cc);
+		}
 	}
 	else
 	{

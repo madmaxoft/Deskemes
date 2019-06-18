@@ -177,21 +177,21 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Pairing ensures that there is no-one listening in on the connection between Deskemes and your device. Make sure that the keys match, otherwise there could be an attacker trying to take over the connection.
-
-Check that the key displayed here matches the key displayed on your device.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Yes, the keys match</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <source>This device uses a key not yet encountered</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <source>Confirm encryption key</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Pairing ensures that there is no-one listening in on the connection between Deskemes and your device. Make sure that the thumbprint images match, otherwise there could be an attacker trying to manipulate the connection.
+
+Check that the thumbprint image displayed here matches the thumbprint image displayed on your device.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Yes, the images match</source>
         <translation type="unfinished"></translation>
     </message>
 </context>

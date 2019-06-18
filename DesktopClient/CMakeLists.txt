@@ -169,6 +169,7 @@ set(SOURCES
 	src/UI/DlgSendText.cpp
 	src/UI/NewDeviceWizard.cpp
 	src/UI/WgtDevice.cpp
+	src/UI/WgtImage.cpp
 	src/UI/WndDevices.cpp
 
 	# The Wizard pages:
@@ -216,6 +217,7 @@ set(HEADERS
 	src/UI/DlgSendText.hpp
 	src/UI/NewDeviceWizard.hpp
 	src/UI/WgtDevice.hpp
+	src/UI/WgtImage.hpp
 	src/UI/WndDevices.hpp
 
 	# The Wizard pages:

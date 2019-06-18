@@ -89,7 +89,30 @@ constexpr quint64 readBE64(const quint8 * aBytes)
 
 
 
+
+/** Returns the value clamped to the specified range. */
+template <typename T>
+constexpr T clamp(T aValue, const T & aMin, const T & aMax)
+{
+	if (aValue < aMin)
+	{
+		return aMin;
+	}
+	if (aValue > aMax)
+	{
+		return aMax;
+	}
+	return aValue;
+}
+
+
+
+
+
 }  // namespace Utils
+
+
+
 
 
 /** Returns the first 4 bytes out of aChars interpreted as a 32-bit big-endian number.

@@ -469,7 +469,7 @@ class Connection
 	private void handlePubiMessage(byte[] aMsgData)
 	{
 		mRemotePublicID = aMsgData;
-		if (!Arrays.equals(aMsgData, mBeaconPublicID))
+		if ((mBeaconPublicID != null) && !Arrays.equals(aMsgData, mBeaconPublicID))
 		{
 			close();
 			return;

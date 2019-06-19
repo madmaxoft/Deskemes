@@ -324,4 +324,25 @@ public class ConnectionMgr
 	{
 		mSelector.wakeup();
 	}
+
+
+
+
+
+	/** Creates a new connection to the loopback interface's specified port.
+	Used for ADB-forwarded connection over USB. */
+	void connectToLocal(int aLocalPort)
+	{
+		InetSocketAddress addr;
+		try
+		{
+			addr = new InetSocketAddress(InetAddress.getLocalHost(), aLocalPort);
+		}
+		catch (Exception exc)
+		{
+			Log.d(TAG, "Failed to connect to local.", exc);
+			return;
+		}
+		queueRegisterConnection(new Connection(mContext, mSettings, this, addr, null, null));
+	}
 }

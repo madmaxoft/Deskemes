@@ -68,3 +68,6 @@ fastlane/readme.md
 # QtCreator user files:
 DesktopClient/CMakeLists.txt.user
 DesktopClient/CMakeLists.txt.user.*
+
+# VS build files:
+DesktopClient/VS20*

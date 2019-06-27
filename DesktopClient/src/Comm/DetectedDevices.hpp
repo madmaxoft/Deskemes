@@ -54,6 +54,7 @@ public:
 			dsUnauthorized,  ///< The device requires on-device (ADB) authorization before it can be accessed
 			dsBlacklisted,   ///< The device has been blacklisted, connections will not be allowed
 			dsOffline,       ///< The device is known but unavailable (ADB bootloader, ...)
+			dsNeedApp,       ///< The app is not installed on the device (ADB)
 		};
 
 		Device(const QByteArray & aEnumeratorDeviceID, Status aStatus);
@@ -141,10 +142,10 @@ public:
 signals:
 
 	/** Emitted when a new device is added to the list. */
-	void deviceAdded(const QByteArray & aEnumeratorDeviceID, Device::Status aStatus);
+	void deviceAdded(const QByteArray & aEnumeratorDeviceID, DetectedDevices::Device::Status aStatus);
 
 	/** Emitted when the device's status changes. */
-	void deviceStatusChanged(const QByteArray & aEnumeratorDeviceID, Device::Status aStatus);
+	void deviceStatusChanged(const QByteArray & aEnumeratorDeviceID, DetectedDevices::Device::Status aStatus);
 
 
 public slots:
@@ -186,5 +187,6 @@ protected:
 	Q_INVOKABLE void invUpdateDeviceList(const DetectedDevices::DeviceStatusList & aNewDeviceList);
 };
 
+Q_DECLARE_METATYPE(DetectedDevices::Device::Status);
 Q_DECLARE_METATYPE(DetectedDevices::DeviceStatusList);
 Q_DECLARE_METATYPE(DetectedDevices::DevicePtr);

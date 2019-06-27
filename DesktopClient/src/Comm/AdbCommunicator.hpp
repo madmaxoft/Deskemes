@@ -51,6 +51,23 @@ public slots:
 	If the screenshotting fails, the regular error() signal is emitted. */
 	void takeScreenshot();
 
+	/** Sets up port reversing - a TCP server on the device, forwarding incoming connections to the local machine.
+	Needs a device assigned first.
+	Once the device confirms the port-reversing, the portReversingEstalished() signal is emitted.
+	If the device responds with an error, the regular error() signal is emitted. */
+	void portReverse(
+		quint16 aDevicePort,
+		quint16 aLocalPort
+	);
+
+
+	/** Executes the specified command through the device's shell, the original V1 protocol.
+	Needs a device assigned first.
+	The shell command's stdout and stderr are delivered back in the shellIncomingOutput() signal, mixed together (no protocol support for split delivery).
+	Once the shell command terminates, the device closes the comm, causing the disconnected() signal to be emitted.
+	If the device responds with an error, the regular error() signal is emitted. */
+	void shellExecuteV1(const QByteArray & aCommand);
+
 
 signals:
 
@@ -79,6 +96,14 @@ signals:
 	/** Emitted after a new screenshot is received from the device after takeScreenshot(). */
 	void screenshotReceived(const QByteArray & aDeviceID, const QImage & aImage);
 
+	/** Emitted after the device confirms port reversing.
+	The connection is then terminated from the device side. */
+	void portReversingEstablished(const QByteArray & aDeviceID);
+
+	/** Emitted after receiving StdOut or StdErr data from the device while in ShellV1 mode (no protocol support for split delivery).
+	May be emitted multiple times when more data is received. */
+	void shellIncomingData(const QByteArray & aDeviceID, const QByteArray & aStdOutOrErr);
+
 
 protected:
 
@@ -98,6 +123,10 @@ protected:
 
 		csScreenshottingStart,  ///< after takeScreenshot() has been called, waiting for the framebuffer geometry
 		csScreenshotting,       ///< after takeScreenshot() has been called, waiting for the framebuffer contents.
+
+		csPortReversing,  ///< after portReverse() has been called
+
+		csExecutingShellV1,  ///< after shellExecuteV1() has been called, executing a shell command and relaying stdout + stderr
 	};
 
 	/** The TCP socket to the ADB server, used for communication. */
@@ -120,7 +149,7 @@ protected:
 
 
 	/** Writes the hex4-formatted length and then the message to the connection. */
-	void writeHex4(const char * aMessage);
+	void writeHex4(const QByteArray & aMessage);
 
 	/** Parses the device list (as received from "host:track-devices")
 	Emits updateDeviceList() accordingly. */

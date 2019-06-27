@@ -5,6 +5,8 @@
 #include <QTimer>
 #include <QImage>
 #include <QMutex>
+#include "../ComponentCollection.hpp"
+#include "DetectedDevices.hpp"
 
 
 
@@ -12,7 +14,6 @@
 
 // fwd:
 class AdbCommunicator;
-class DetectedDevices;
 
 
 
@@ -25,7 +26,8 @@ provide a UI model for the devices.
 Basically a thread for the enumerating and container for the various ADB connections; the heavy lifting
 is done in AdbCommunicator. */
 class UsbDeviceEnumerator:
-	public QThread
+	public QThread,
+	public ComponentCollection::Component<ComponentCollection::ckUsbDeviceEnumerator>
 {
 	Q_OBJECT
 
@@ -33,15 +35,28 @@ public:
 
 
 	/** Creates a new enumerator and makes it store info in the supplied DetectedDevices instance. */
-	UsbDeviceEnumerator(DetectedDevices & aDetectedDevices);
+	UsbDeviceEnumerator(ComponentCollection & aComponents);
 
 	virtual ~UsbDeviceEnumerator() override;
+
+	const DetectedDevices & detectedDevices() const { return mDetectedDevices; }
+
+	/** Starts the enumerator.
+	Devices are instructed to connect to the specified TCP port. */
+	void start(quint16 aTcpListenerPort);
 
 
 protected:
 
+	/** The components of the entire app. */
+	ComponentCollection & mComponents;
+
 	/** The storage for the detected devices. */
-	DetectedDevices & mDetectedDevices;
+	DetectedDevices mDetectedDevices;
+
+	/** The TCP port to which the traffic from the devices is redirected using ADB port-forwaring. */
+	quint16 mTcpListenerPort;
+
 
 	// QThread overrides:
 	virtual void run() override;
@@ -49,6 +64,14 @@ protected:
 	/** Requests a new screenshot from the specified device.
 	Guaranteed to be called from this object's thread. */
 	Q_INVOKABLE void invRequestDeviceScreenshot(const QByteArray & aDeviceID);
+
+	/** Tries to set up port-reversing on the device, then calls startConnectionByIntent().
+	Called from mDetectedDevices when a new device is added to the list. */
+	void setupPortReversing(const QByteArray & aDeviceID);
+
+	/** Tries to start up the on-device app by invoking the LocalConnectService using an intent.
+	This will "ping" the app to connect to the local port, previously port-reversed through ADB to local computer. */
+	void startConnectionByIntent(const QByteArray & aDeviceID);
 
 
 public slots:
@@ -71,4 +94,11 @@ protected slots:
 	/** Updates the last screenshot stored in mDevices[] for the specified device.
 	If the device is not in mDevices[], ignored. */
 	void updateDeviceLastScreenshot(const QByteArray & aDeviceID, const QImage & aScreenshot);
+
+	/** Called when a device is added to the list of detected devices.
+	If the device is online, sets up port-reversing. */
+	void onDeviceAdded(const QByteArray & aDeviceID, DetectedDevices::Device::Status aStatus);
+
+	/** If the device is going online, sets up port-reversing. */
+	void onDeviceStatusChanged(const QByteArray & aDeviceID, DetectedDevices::Device::Status aStatus);
 };

@@ -1,0 +1,12 @@
+# This file makes supporting code editors use the specified settings on a per-folder basis.
+# See www.editorconfig.org for details
+
+
+
+# Don't search parent folders for more config
+root = true
+
+
+# tab indent for C/C++ files:
+[{*.c,*.cpp,*.cxx,*.h,*.hpp,*.hxx}]
+indent_style = tab

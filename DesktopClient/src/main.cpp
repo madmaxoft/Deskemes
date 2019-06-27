@@ -21,6 +21,7 @@
 #include "Comm/DetectedDevices.hpp"
 #include "Comm/TcpListener.hpp"
 #include "Comm/UdpBroadcaster.hpp"
+#include "Comm/UsbDeviceEnumerator.hpp"
 
 
 
@@ -103,6 +104,7 @@ int main(int argc, char *argv[])
 		// Initialize singletons / subsystems:
 		BackgroundTasks::get();
 		qRegisterMetaType<DevicePtr>();
+		qRegisterMetaType<DetectedDevices::Device::Status>();
 		qRegisterMetaType<DetectedDevices::DeviceStatusList>();
 		qRegisterMetaType<Connection *>();
 		qRegisterMetaType<ConnectionPtr>();
@@ -113,13 +115,14 @@ int main(int argc, char *argv[])
 		// Create the main app objects:
 		ComponentCollection cc;
 		cc.addComponent(instConf);
-		auto mainDB      = cc.addNew<Database>(cc);
-		auto devMgr      = cc.addNew<DeviceMgr>(cc);
-		auto connMgr     = cc.addNew<ConnectionMgr>(cc);
-		auto broadcaster = cc.addNew<UdpBroadcaster>(cc);
-		auto listener    = cc.addNew<TcpListener>(cc);
-		auto pairings    = cc.addNew<DevicePairings>(cc);
-		auto blacklist   = cc.addNew<DeviceBlacklist>(cc);
+		auto mainDB        = cc.addNew<Database>(cc);
+		auto devMgr        = cc.addNew<DeviceMgr>(cc);
+		auto connMgr       = cc.addNew<ConnectionMgr>(cc);
+		auto broadcaster   = cc.addNew<UdpBroadcaster>(cc);
+		auto listener      = cc.addNew<TcpListener>(cc);
+		auto pairings      = cc.addNew<DevicePairings>(cc);
+		auto blacklist     = cc.addNew<DeviceBlacklist>(cc);
+		auto usbEnumerator = cc.addNew<UsbDeviceEnumerator>(cc);
 
 		// Connect the main objects together:
 		app.connect(connMgr.get(), &ConnectionMgr::newConnection, devMgr.get(), &DeviceMgr::newConnection);
@@ -134,6 +137,7 @@ int main(int argc, char *argv[])
 		blacklist->start();
 		listener->start();
 		broadcaster->start();
+		usbEnumerator->start(listener->listeningPort());
 
 		// Show the UI:
 		WndDevices w(cc);

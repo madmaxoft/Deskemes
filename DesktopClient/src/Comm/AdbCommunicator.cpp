@@ -218,13 +218,37 @@ void AdbCommunicator::takeScreenshot()
 
 
 
-void AdbCommunicator::writeHex4(const char * aMessage)
+void AdbCommunicator::portReverse(quint16 aDevicePort, quint16 aLocalPort)
 {
-	auto len = strlen(aMessage);
+	qDebug() << "Setting up port-reversing";
+	assert(mState == csDeviceAssigned);
+	writeHex4(QString::fromUtf8("reverse:forward:tcp:%1;tcp:%2").arg(aDevicePort).arg(aLocalPort).toUtf8());
+	mState = csPortReversing;
+}
+
+
+
+
+
+void AdbCommunicator::shellExecuteV1(const QByteArray & aCommand)
+{
+	qDebug() << "Sending V1 shell command " << aCommand;
+	assert(mState == csDeviceAssigned);
+	writeHex4("shell:" + aCommand);
+	mState = csExecutingShellV1;
+}
+
+
+
+
+
+void AdbCommunicator::writeHex4(const QByteArray & aMessage)
+{
+	auto len = aMessage.length();
 	assert(len <= std::numeric_limits<uint16_t>::max());
 	auto hex4 = numberToHex4(static_cast<uint16_t>(len));
 	mSocket.write(hex4);
-	mSocket.write(aMessage, static_cast<int>(len));
+	mSocket.write(aMessage);
 }
 
 
@@ -397,7 +421,7 @@ void AdbCommunicator::onSocketReadyRead()
 		{
 			break;
 		}
-		qDebug() << "Received data: " << dataRead.size() << " bytes";
+		qDebug() << "Received data: " << dataRead.size() << " bytes: " << dataRead;
 		mIncomingData.append(dataRead);
 	}
 
@@ -485,6 +509,22 @@ void AdbCommunicator::onSocketReadyRead()
 				break;
 			}
 
+			case csPortReversing:
+			{
+				if (extractOkayOrFail())
+				{
+					mState = csBroken;  // The connection will be terminated from the device side
+					emit portReversingEstablished(mAssignedDeviceID);
+				}
+				break;
+			}
+
+			case csExecutingShellV1:
+			{
+				emit shellIncomingData(mAssignedDeviceID, mIncomingData);
+				mIncomingData.clear();
+				break;
+			}
 		}
 	}
 }

@@ -30,15 +30,14 @@ PgUsbDeviceList::~PgUsbDeviceList()
 
 void PgUsbDeviceList::initializePage()
 {
-	mDevEnum = std::make_unique<UsbDeviceEnumerator>(mDetectedDevices);
-	connect(&mDetectedDevices, &DetectedDevices::deviceAdded,
-		[this](const QByteArray & aDeviceID, DetectedDevices::Device::Status aStatus)
+	auto usbEnumerator = mComponents.get<UsbDeviceEnumerator>();
+	connect(&usbEnumerator->detectedDevices(), &DetectedDevices::deviceAdded,
+		[usbEnumerator](const QByteArray & aDeviceID, DetectedDevices::Device::Status aStatus)
 		{
 			if (aStatus == DetectedDevices::Device::dsOnline)
 			{
-				mDevEnum->requestDeviceScreenshot(aDeviceID);
+				usbEnumerator->requestDeviceScreenshot(aDeviceID);
 			}
 		}
 	);
-	// mDevEnum.get(), &UsbDeviceEnumerator::requestDeviceScreenshot);
 }

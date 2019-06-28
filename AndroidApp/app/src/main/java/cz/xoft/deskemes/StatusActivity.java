@@ -18,11 +18,13 @@ public class StatusActivity extends AppCompatActivity
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_status);
 
+		/*
 		// DEBUG: Wake the screen up, so that UDP broadcasts work while this activity is on-screen
 		getWindow().addFlags(WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD);
 		getWindow().addFlags(WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED);
 		getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 		getWindow().addFlags(WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON);
+		*/
 
 		ConnectivityService.startIfNotRunning(this);
 	}

@@ -83,6 +83,16 @@ public class ConnectionMgr
 
 
 
+	/** Returns the ApprovedPeers instance used by this class. */
+	ApprovedPeers approvedPeers()
+	{
+		return mApprovedPeers;
+	}
+
+
+
+
+
 	// IBeaconNotificationConsumer override:
 	@Override
 	public void beaconReceived(InetSocketAddress aAddressToConnect, int aProtocolVersion, byte[] aPublicID, boolean aIsDiscovery)

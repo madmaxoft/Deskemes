@@ -464,8 +464,7 @@ class Connection
 
 
 	/** Handles the `pubi` cleartext protocol message.
-	Verifies that the public ID is the same as received in the beacon.
-	TODO: Checks with the known remotes list to see if we should pair immediately. */
+	Verifies that the public ID is the same as received in the beacon. */
 	private void handlePubiMessage(byte[] aMsgData)
 	{
 		mRemotePublicID = aMsgData;
@@ -473,6 +472,12 @@ class Connection
 		{
 			close();
 			return;
+		}
+
+		// If the approved peer has not yet been retrieved, try retrieving it now:
+		if (mApprovedPeer == null)
+		{
+			mApprovedPeer = mConnMgr.approvedPeers().getPeer(mRemotePublicID);
 		}
 	}
 
@@ -494,7 +499,7 @@ class Connection
 
 		if (mApprovedPeer == null)
 		{
-			// Not approved yet, wait until it asks for TLS, then show a pairing request UI
+			// Not approved yet, wait until it asks for TLS or pairing, then show a pairing request UI
 			return;
 		}
 		if (!Arrays.equals(mApprovedPeer.mRemotePublicKeyData, aMsgData))
@@ -607,20 +612,20 @@ class Connection
 			}
 
 			mHasReceivedDsms = true;
-
-			// Send our own `dsms` packet:
-			byte[] packet = {0x44, 0x65, 0x73, 0x6b, 0x65, 0x6d, 0x65, 0x73, 0x00, 0x01};
-			sendCleartextMessage("dsms", packet);
-
-			// Send our info:
-			sendCleartextMessage("fnam", Utils.stringToUtf8(mSettings.getFriendlyName()));
-			sendCleartextMessage("pubi", mSettings.getPublicID());
 		}
 		catch (ByteArrayReader.DataEndReachedException exc)
 		{
 			close();
+			return;
 		}
 
+		// Send our own `dsms` packet:
+		byte[] packet = {0x44, 0x65, 0x73, 0x6b, 0x65, 0x6d, 0x65, 0x73, 0x00, 0x01};
+		sendCleartextMessage("dsms", packet);
+
+		// Send our info:
+		sendCleartextMessage("fnam", Utils.stringToUtf8(mSettings.getFriendlyName()));
+		sendCleartextMessage("pubi", mSettings.getPublicID());
 	}
 
 

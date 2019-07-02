@@ -46,5 +46,6 @@ std::vector<QString> ChannelSmsSend::divideMessage(const QString & aText)
 
 void ChannelSmsSend::processIncomingMessage(const QByteArray & aMessage)
 {
+	Q_UNUSED(aMessage);
 	// TODO
 }

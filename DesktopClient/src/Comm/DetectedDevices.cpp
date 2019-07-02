@@ -203,6 +203,7 @@ QVariant DetectedDevices::data(const QModelIndex & aIndex, int aRole) const
 						case Device::dsUnauthorized: return tr("Authorization needed");
 						case Device::dsOffline:      return tr("Offline");
 						case Device::dsBlacklisted:  return tr("Blacklisted");
+						case Device::dsNeedApp:      return tr("App not installed");
 					}
 					return {};
 				}

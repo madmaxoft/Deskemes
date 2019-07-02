@@ -52,7 +52,7 @@ Check that the thumbprint image displayed here matches the thumbprint image disp
   <customwidget>
    <class>WgtImage</class>
    <extends>QWidget</extends>
-   <header>../WgtImage.hpp</header>
+   <header>WgtImage.hpp</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

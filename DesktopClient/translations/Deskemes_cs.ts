@@ -92,6 +92,10 @@
         <source>Blacklisted</source>
         <translation type="unfinished"></translation>
     </message>
+    <message>
+        <source>App not installed</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>DlgSendText</name>

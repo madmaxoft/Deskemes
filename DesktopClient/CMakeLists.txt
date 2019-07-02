@@ -283,6 +283,16 @@ set(TSFILES
 
 
 
+# Special handling: The WgtImage.hpp file needs to be accessible from ui_PgPairConfirm.h, included from PgPairConfirm.cpp:
+set_source_files_properties (
+	src/UI/Pages/PgPairConfirm.cpp
+	PROPERTIES COMPILE_FLAGS "-I${CMAKE_CURRENT_SOURCE_DIR}/src/UI"
+)
+
+
+
+
+
 # Process translations(update, compile):
 set(ts_lst_file "${CMAKE_CURRENT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/ts_lst_file")
 set(lst_file_srcs)

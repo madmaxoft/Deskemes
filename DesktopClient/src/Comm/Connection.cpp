@@ -2,9 +2,36 @@
 #include <cassert>
 #include <QTimer>
 #include <QDateTime>
+#include "../../lib/PolarSSL-cpp/SslConfig.h"
+#include "../../lib/PolarSSL-cpp/X509Cert.h"
+#include "../../lib/PolarSSL-cpp/CryptoKey.h"
 #include "../InstallConfiguration.hpp"
 #include "../Utils.hpp"
 #include "../DB/DevicePairings.hpp"
+
+
+
+
+
+/** Implemented in MbedTls, sets the threshold for debug messages reported via the debug hook.
+threshold of 0 turns off all messages (default)
+threshold of 5 turns all messages on. */
+extern "C" void mbedtls_debug_set_threshold(int threshold);
+
+
+
+
+
+/** Callback that can be used in mbedTls for receiving the TLS debug messages. */
+static void tlsDebugCallback(void * aCallbackData, int aDebugLevel, const char * aFileName, int aLineNumber, const char * aMessage)
+{
+	Q_UNUSED(aDebugLevel);
+	Q_UNUSED(aFileName);
+	Q_UNUSED(aLineNumber);
+
+	auto conn = reinterpret_cast<Connection *>(aCallbackData);
+	conn->logger().log("TLS: %1", aMessage);
+}
 
 
 
@@ -693,16 +720,9 @@ void Connection::processIncomingData(const QByteArray & aData)
 
 		case csEncrypted:
 		{
-			// TODO: TLS
-
-			// Add the data to the internal buffer:
-			mIncomingData.append(aData);
-
-			// Extract all complete messages:
-			while (extractAndHandleMuxMessage())
-			{
-				// Empty loop body
-			}
+			// Add the data to the internal buffer, then process the TLS protocol:
+			mIncomingDataEncrypted.append(aData);
+			processTls();
 			break;
 		}
 
@@ -839,6 +859,8 @@ void Connection::handleCleartextMessageDsms(const QByteArray & aMsg)
 
 void Connection::handleCleartextMessageStls()
 {
+	mLogger.log("Received a TLS request");
+
 	// Check if we have all the information needed
 	if (
 		!mRemotePublicID.isPresent() ||
@@ -850,16 +872,32 @@ void Connection::handleCleartextMessageStls()
 		return;
 	}
 
+	// Check our pairing for the remote:
+	auto pairings = mComponents.get<DevicePairings>();
+	auto pairing = pairings->lookupDevice(mRemotePublicID.value());
+	if (!pairing.isPresent())
+	{
+		mLogger.log("Remote requested TLS, but we don't have a pairing for it");
+		return;
+	}
+
 	// If we didn't send the StartTls yet, do it now:
 	if (!mHasSentStartTls)
 	{
 		sendCleartextMessage("stls"_4cc);
 	}
+
 	mLogger.log("Received a TLS request, upgrading to TLS");
-
-	// TODO: Add an actual TLS filter
-
+	mTls = std::make_unique<CallbackSslContext>(*this);
+	auto config = SslConfig::makeDefaultConfig(false);
+	auto privKey = std::make_shared<CryptoKey>(pairing.value().mLocalPrivateKeyData.toStdString(), std::string());
+	auto pubKey = std::make_shared<CryptoKey>(pairing.value().mLocalPublicKeyData.toStdString());
+	auto cert = X509Cert::fromPrivateKey(privKey, pubKey, "CN=Deskemes");
+	config->setOwnCert(cert, privKey);
+	mTls->initialize(config);
 	setState(csEncrypted);
+	std::swap(mIncomingData, mIncomingDataEncrypted);  // All the data received from the socket after the "stls" is expected to be TLSed
+	processTls();
 
 	// Set up the command channel:
 	auto ch0 = std::make_shared<ChannelZero>(*this);
@@ -874,9 +912,8 @@ void Connection::handleCleartextMessageStls()
 	);
 
 	// Push the leftover data to the TLS filter:
-	QByteArray leftoverData;
-	std::swap(leftoverData, mIncomingData);
-	processIncomingData(leftoverData);
+	std::swap(mIncomingDataEncrypted, mIncomingData);
+	mTls->performHandshake();
 
 	emit established(this);
 }
@@ -975,13 +1012,92 @@ void Connection::addChannel(const quint16 aChannelID, Connection::ChannelPtr aCh
 void Connection::sendChannelMessage(const quint16 aChannelID, const QByteArray & aMessage)
 {
 	mLogger.logHex(aMessage, "Sending message to channel #%1", aChannelID);
-	QByteArray buf;
-	Utils::writeBE16(buf, aChannelID);
-	Utils::writeBE16Lstring(buf, aMessage);
+	assert(mState == csEncrypted);
+	assert(mTls != nullptr);
+	Utils::writeBE16(mOutgoingDataPlain, aChannelID);
+	Utils::writeBE16Lstring(mOutgoingDataPlain, aMessage);
+	processTls();
+}
 
-	// TODO: TLS
 
-	mIO->write(buf);
+
+
+
+void Connection::processTls()
+{
+	assert(mState == csEncrypted);
+	assert(mTls != nullptr);
+
+	bool shouldLoop = true;
+	while (shouldLoop)
+	{
+		shouldLoop = false;
+
+		// Write the outgoing data, if possible:
+		if (!mOutgoingDataPlain.isEmpty())
+		{
+			auto numWritten = mTls->writePlain(mOutgoingDataPlain.constData(), static_cast<size_t>(mOutgoingDataPlain.size()));
+			if (numWritten > 0)
+			{
+				mOutgoingDataPlain.remove(0, numWritten);
+				shouldLoop = true;
+			}
+			else if (
+				(numWritten != MBEDTLS_ERR_SSL_WANT_READ) &&
+				(numWritten != MBEDTLS_ERR_SSL_WANT_WRITE)
+			)
+			{
+				mLogger.log("ERROR: TLS writing failed: -0x%1", QString::number(-numWritten, 16));
+				terminate();
+			}
+		}
+
+		// Read the incoming data, if possible:
+		char buffer[3000];
+		auto numRead = mTls->readPlain(buffer, sizeof(buffer));
+		if (numRead > 0)
+		{
+			mIncomingData.append(buffer, numRead);
+			while (extractAndHandleMuxMessage())
+			{
+				// Empty loop body
+			}
+			shouldLoop = true;
+		}
+		else if (
+			(numRead != MBEDTLS_ERR_SSL_WANT_READ) &&
+			(numRead != MBEDTLS_ERR_SSL_WANT_WRITE)
+		)
+		{
+			mLogger.log("ERROR: TLS reading failed: -0x%x", QString::number(-numRead, 16));
+			terminate();
+		}
+	}
+}
+
+
+
+
+
+int Connection::receiveEncrypted(unsigned char * aBuffer, size_t aNumBytes)
+{
+	if (mIncomingDataEncrypted.isEmpty())
+	{
+		return MBEDTLS_ERR_SSL_WANT_READ;
+	}
+	int numBytes = std::min(static_cast<int>(aNumBytes), mIncomingDataEncrypted.size());
+	memcpy(aBuffer, mIncomingDataEncrypted.constData(), static_cast<size_t>(numBytes));
+	mIncomingDataEncrypted.remove(0, numBytes);
+	return numBytes;
+}
+
+
+
+
+
+int Connection::sendEncrypted(const unsigned char * aBuffer, size_t aNumBytes)
+{
+	return static_cast<int>(mIO->write(reinterpret_cast<const char *>(aBuffer), static_cast<qint64>(aNumBytes)));
 }
 
 

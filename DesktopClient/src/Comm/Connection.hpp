@@ -6,6 +6,7 @@
 #include <QMutex>
 #include "../Optional.hpp"
 #include "../ComponentCollection.hpp"
+#include "../../lib/PolarSSL-cpp/CallbackSslContext.h"
 
 
 
@@ -26,7 +27,8 @@ The Connection also provides the transport name and kind that is shown to the us
 Each connection is uniquely identified by its EnumeratorID. */
 class Connection:
 	public QObject,
-	public std::enable_shared_from_this<Connection>
+	public std::enable_shared_from_this<Connection>,
+	public CallbackSslContext::DataCallbacks
 {
 	using Super = QObject;
 	Q_OBJECT
@@ -177,6 +179,16 @@ protected:
 	If the connection is in the TLS state, the data here is already decrypted. */
 	QByteArray mIncomingData;
 
+	/** Buffer for the unprocessed encrypted incoming data.
+	Only used while in the TLS state, the data gets stored here before being sent through the TLS decryptor
+	(because the decryptor is pull-based, while we have push-based incoming data). */
+	QByteArray mIncomingDataEncrypted;
+
+	/** Buffer for the unprocessed plain outgoing data.
+	Only used while in the TLS state, the data gets stored here before being encrypted by TLS
+	and sent to the remote. */
+	QByteArray mOutgoingDataPlain;
+
 	/** True after the initial protocol identification has been received.
 	Used to detect messages sent without proper identification first. */
 	bool mHasReceivedIdentification;
@@ -197,6 +209,9 @@ protected:
 
 	/** The logger used for all messages produced by this class. */
 	Logger & mLogger;
+
+	/** The interface to the TLS codec in PolarSSL,for decoding the TLS communication. */
+	std::unique_ptr<CallbackSslContext> mTls;
 
 
 	/** Checks whether the remote public key and ID pair is known.
@@ -248,6 +263,15 @@ protected:
 	Asserts that the connection is csEncrypted.
 	To be used from Channel::sendMessage() only. */
 	void sendChannelMessage(const quint16 aChannelID, const QByteArray & aMessage);
+
+	/** Processes the incoming and outgoing TLS data.
+	Feeds data from mIncomingDataEncrypted to TLS, sends the encrypted data produced by TLS.
+	Keeps processing until both the incoming and outgoing buffers are empty. */
+	void processTls();
+
+	// CallbackSslContext::DataCallbacks overrides:
+	virtual int receiveEncrypted(unsigned char * aBuffer, size_t aNumBytes) override;
+	virtual int sendEncrypted(const unsigned char * aBuffer, size_t aNumBytes) override;
 
 
 signals:

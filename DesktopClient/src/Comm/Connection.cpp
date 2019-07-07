@@ -1080,7 +1080,6 @@ int Connection::receiveEncrypted(unsigned char * aBuffer, size_t aNumBytes)
 	int numBytes = std::min(static_cast<int>(aNumBytes), mIncomingDataEncrypted.size());
 	memcpy(aBuffer, mIncomingDataEncrypted.constData(), static_cast<size_t>(numBytes));
 	mIncomingDataEncrypted.remove(0, numBytes);
-	qDebug() << this << "Returning " << numBytes << " bytes";
 	return numBytes;
 }
 
@@ -1090,7 +1089,6 @@ int Connection::receiveEncrypted(unsigned char * aBuffer, size_t aNumBytes)
 
 int Connection::sendEncrypted(const unsigned char * aBuffer, size_t aNumBytes)
 {
-	qDebug() << this << "Writing " << aNumBytes << " bytes";
 	return static_cast<int>(mIO->write(reinterpret_cast<const char *>(aBuffer), static_cast<qint64>(aNumBytes)));
 }
 

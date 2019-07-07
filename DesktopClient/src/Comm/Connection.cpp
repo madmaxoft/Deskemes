@@ -5,9 +5,17 @@
 #include "../../lib/PolarSSL-cpp/SslConfig.h"
 #include "../../lib/PolarSSL-cpp/X509Cert.h"
 #include "../../lib/PolarSSL-cpp/CryptoKey.h"
+#include "../../lib/PolarSSL-cpp/TlsException.h"
 #include "../InstallConfiguration.hpp"
 #include "../Utils.hpp"
 #include "../DB/DevicePairings.hpp"
+
+
+
+
+
+/** If defined, TLS messages below the threshold will be output to the debugger via qDebug() */
+// #define DEBUG_TLS 5
 
 
 
@@ -42,6 +50,57 @@ static void tlsDebugCallback(void * aCallbackData, int aDebugLevel, const char *
 	auto conn = reinterpret_cast<Connection *>(aCallbackData);
 	QByteArray msg(aMessage);
 	qDebug() << conn << "TLS: " << msg.trimmed();
+}
+
+
+
+
+
+/** Returns true if the two keys are the same.
+The weird signature is due to data types used at the only call site:
+Key is stored in the DB in a QByteArray, but is received from TLS in a std::string.
+This function does a byte-by-byte comparison of the binary data. */
+static bool isSameKey(const QByteArray & aKey1, const std::string & aKey2)
+{
+	if (aKey1.length() != static_cast<int>(aKey2.size()))
+	{
+		return false;
+	}
+	return (memcmp(aKey1.constData(), aKey2.data(), aKey2.size()) == 0);
+}
+
+
+
+
+
+/** Callback for certificate verification. */
+static int tlsVerifyCallback(void * aUserData, mbedtls_x509_crt * aCurrentCert, int aChainDepth, uint32_t * aVerificationFlags)
+{
+	Q_UNUSED(aChainDepth);
+
+	auto conn = reinterpret_cast<Connection *>(aUserData);
+	qDebug() << conn << "Cert verify";
+	auto cert = X509Cert::fromContext(aCurrentCert);
+	std::string pubKeyDer;
+	try
+	{
+		pubKeyDer = cert->publicKeyDer();
+	}
+	catch (const TlsException & exc)
+	{
+		qDebug() << conn << "Failed to extract public key: " << exc.what();
+		*aVerificationFlags = 0xffffffff;
+		return -1;
+	}
+	if (isSameKey(conn->remotePublicKeyData().value().constData(), pubKeyDer))
+	{
+		qDebug() << conn << "Pub key match";
+		*aVerificationFlags = 0;
+		return 0;
+	}
+	qDebug() << conn << "Pub key MISMATCH";
+	*aVerificationFlags = 0xffffffff;
+	return -1;
 }
 
 
@@ -885,6 +944,12 @@ void Connection::handleCleartextMessageStls()
 	auto pubKey = std::make_shared<CryptoKey>(pairing.value().mLocalPublicKeyData.toStdString());
 	auto cert = X509Cert::fromPrivateKey(privKey, pubKey, "CN=Deskemes");
 	config->setOwnCert(cert, privKey);
+	config->setAuthMode(SslAuthMode::Optional);
+	config->setVerifyCallback(tlsVerifyCallback, this);
+	#ifdef DEBUG_TLS
+		mbedtls_debug_set_threshold(DEBUG_TLS);
+		config->setDebugCallback(tlsDebugCallback, this);
+	#endif  //
 	mTls->initialize(config);
 	setState(csEncrypted);
 	std::swap(mIncomingData, mIncomingDataEncrypted);  // All the data received from the socket after the "stls" is expected to be TLSed
@@ -1061,7 +1126,7 @@ void Connection::processTls()
 			(numRead != MBEDTLS_ERR_SSL_WANT_WRITE)
 		)
 		{
-			qDebug("TLS reading failed: -0x%x", -numRead);
+			qDebug("TLS reading failed: -0x%x (%s)", -numRead, TlsException::mbedTlsCodeToString(numRead).c_str());
 			terminate();
 		}
 	}

@@ -12,9 +12,19 @@ local shouldAnswerToDiscoveryOnly = false
 
 
 local socket = require("socket")
+local tls = require("ssl")
 
 --- Will contain the avatar read from file "Simulator.png", if it exists
 local avatar
+
+--- The X509 certificate used for the connection (loaded from SimulatorCert.pem):
+local gCert
+
+-- The private key for gCert, loaded from SimulatorPrivKey.pem:
+local gPrivKey
+
+-- The public key from gCert:
+local gPubKey
 
 
 
@@ -594,27 +604,15 @@ function Device:processCleartextMessage(aMsgType, aMsgData)
 			error("The remote sent its public key without sending its public ID first")
 		end
 		self.mRemotePublicKey = aMsgData
-
-		-- socket.select(nil, nil, 1)  -- Wait 1 second
-
-		print("Sending our (dummy) public key")
-		self:sendCleartextMessage("pubk", "DummySimulatorPublicKeyData")
-		--[[
-		print("Sending TLS request.")
-		self:sendCleartextMessage("stls")
-		--]]
+		print("Sending our public key")
+		self:sendCleartextMessage("pubk", gPubKey)
 	elseif (aMsgType == "stls") then
 		print("Received a StartTLS request")
 		if not(self.mRemotePublicKey) then
 			error("The remote is starting TLS without a public key")
 		end
-
-		-- socket.select(nil, nil, 1)  -- Wait 1 second
-
 		print("Starting TLS, too")
 		self:sendCleartextMessage("stls")
-
-		-- TODO: TLS
 		self:switchToMuxProtocol()
 	end
 end
@@ -627,6 +625,15 @@ function Device:switchToMuxProtocol()
 	assert(type(self) == "table")
 	assert(type(self.mChannels) == "table")
 
+	local params =
+	{
+		mode = "client",
+		protocol = "any",
+		key = "SimulatorPrivKey.pem",
+		certificate = "SimulatorCert.pem"
+	}
+	self.mSocket = tls.wrap(self.mSocket, params)
+	self.mSocket:dohandshake()
 	self.extractProcessMessage = self.extractProcessMuxMessage
 	self.mChannels[0] = ChannelZero:new({mDevice = self, mID = 0})
 end
@@ -792,15 +799,40 @@ end
 
 
 
+
+
+
+
+--- Returns the contents of the specified file
+-- if aIsCompulsory is true, raises an error if the file cannot be read, otherwise returns nil
+local function readFile(aFileName, aIsCompulsory)
+	local f, err = io.open(aFileName, "rb")
+	if not(f) then
+		if (aIsCompulsory) then
+			error("Cannot read file " .. aFileName .. ": " .. tostring(err))
+		else
+			return nil
+		end
+	end
+	return f:read("*all")
+end
+
+
+
+
+
 -------------------------------------------------------------------------------------------------------------
 -- main:
 
 -- If the Simulator.png file exists, load its contents:
-local f = io.open("Simulator.png", "rb")
-if (f) then
-	avatar = f:read("*all")
-	f:close()
-end
+avatar = readFile("Simulator.png", false)
+
+-- Check that the cert and keys exist:
+gCert = readFile("SimulatorCert.pem", true)
+gPrivKey = readFile("SimulatorPrivKey.pem", true)
+gCert = assert(tls.loadcertificate(gCert), "Failed to load certificate")
+gPubKey = readFile("SimulatorPubKey.der", true)
+
 
 -- Main loop: Listen for a single UDP beacon and simulate a device for it:
 local udpReceiver = assert(socket.udp())

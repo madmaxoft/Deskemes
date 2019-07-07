@@ -1,6 +1,7 @@
 #include "TcpListener.hpp"
 #include <cassert>
 #include <QTcpSocket>
+#include <QDebug>
 #include "Connection.hpp"
 #include "DetectedDevices.hpp"
 #include "UdpBroadcaster.hpp"
@@ -24,7 +25,11 @@ TcpListener::TcpListener(ComponentCollection & aComponents, QObject * aParent):
 void TcpListener::start()
 {
 	assert(!mServer.isListening());  // Not started yet
-	mServer.listen();
+	if (!mServer.listen(QHostAddress::Any, 24816))
+	{
+		qDebug() << "Failed to listen on preferred port 24816, attempting any port";
+		mServer.listen();
+	}
 }
 
 

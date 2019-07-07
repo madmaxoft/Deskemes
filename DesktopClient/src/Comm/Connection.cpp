@@ -2,9 +2,47 @@
 #include <cassert>
 #include <QTimer>
 #include <QDateTime>
+#include "../../lib/PolarSSL-cpp/SslConfig.h"
+#include "../../lib/PolarSSL-cpp/X509Cert.h"
+#include "../../lib/PolarSSL-cpp/CryptoKey.h"
 #include "../InstallConfiguration.hpp"
 #include "../Utils.hpp"
 #include "../DB/DevicePairings.hpp"
+
+
+
+
+
+/** Implemented in MbedTls, sets the threshold for debug messages reported via the debug hook.
+threshold of 0 turns off all messages (default)
+threshold of 5 turns all messages on. */
+extern "C" void mbedtls_debug_set_threshold(int threshold);
+
+
+
+
+
+/** Dump connection info to qDebug() output.*/
+QDebug operator << (QDebug aDebug, const Connection * aConnection)
+{
+	return aDebug << "[Connection " << static_cast<const void *>(aConnection) << "]: ";
+}
+
+
+
+
+
+/** Callback that can be used in mbedTls for receiving the TLS debug messages. */
+static void tlsDebugCallback(void * aCallbackData, int aDebugLevel, const char * aFileName, int aLineNumber, const char * aMessage)
+{
+	Q_UNUSED(aDebugLevel);
+	Q_UNUSED(aFileName);
+	Q_UNUSED(aLineNumber);
+
+	auto conn = reinterpret_cast<Connection *>(aCallbackData);
+	QByteArray msg(aMessage);
+	qDebug() << conn << "TLS: " << msg.trimmed();
+}
 
 
 
@@ -77,7 +115,7 @@ public:
 			{
 				aChannel->mChannelID = Utils::readBE16(aAdditionalData);
 				aChannel->mIsOpen = true;
-				qDebug() << "Channel " << serviceName << " acknowledged by the device.";
+				qDebug() << this << "Channel " << serviceName << " acknowledged by the device.";
 				emit channelAcknowledged(aChannel);
 				emit aChannel->opened(aChannel.get());
 			},
@@ -350,7 +388,7 @@ protected:
 		Q_UNUSED(aRoundtripMsec);
 
 		// TODO: Store and process the value
-		// qDebug() << "Ping received in " << aRoundtripMsec << " msec";
+		// qDebug() << this << "Ping received in " << aRoundtripMsec << " msec";
 	}
 
 
@@ -367,9 +405,9 @@ private slots:
 				Q_UNUSED(aAdditionalData);
 				this->pingReceived(QDateTime::currentMSecsSinceEpoch() - now);
 			},
-			[](const quint16 aErrorCode, const QByteArray & aErrorMessage)
+			[this](const quint16 aErrorCode, const QByteArray & aErrorMessage)
 			{
-				qDebug() << "Ping request returned an error: " << aErrorCode << "; " << aErrorMessage;
+				qDebug() << this << "Ping request returned an error: " << aErrorCode << "; " << aErrorMessage;
 			},
 			QString::number(numPings++).toUtf8()
 		);
@@ -439,7 +477,7 @@ Connection::Connection(
 	connect(aIO, &QIODevice::readChannelFinished, this, &Connection::ioClosing);
 
 	// Send the protocol identification:
-	qDebug() << "Sending protocol identification";
+	qDebug() << this << "Sending protocol identification";
 	QByteArray protocolIdent("Deskemes");
 	Utils::writeBE16(protocolIdent, 1);  // version
 	sendCleartextMessage("dsms"_4cc, protocolIdent);
@@ -519,7 +557,7 @@ void Connection::sendLocalPublicKey()
 	auto pairing = mComponents.get<DevicePairings>()->lookupDevice(mRemotePublicID.value());
 	assert(pairing.isPresent());
 
-	qDebug() << "Sending public key data";
+	qDebug() << this << "Sending public key data";
 	sendCleartextMessage("pubk"_4cc, pairing.value().mLocalPublicKeyData);
 }
 
@@ -529,7 +567,7 @@ void Connection::sendLocalPublicKey()
 
 void Connection::sendPairingRequest()
 {
-	qDebug() << "Sending pairing request";
+	qDebug() << this << "Sending pairing request";
 	sendCleartextMessage("pair"_4cc);
 }
 
@@ -674,23 +712,16 @@ void Connection::processIncomingData(const QByteArray & aData)
 
 		case csEncrypted:
 		{
-			// TODO: TLS
-
-			// Add the data to the internal buffer:
-			mIncomingData.append(aData);
-
-			// Extract all complete messages:
-			while (extractAndHandleMuxMessage())
-			{
-				// Empty loop body
-			}
+			// Add the data to the internal buffer, then process the TLS protocol:
+			mIncomingDataEncrypted.append(aData);
+			processTls();
 			break;
 		}
 
 		case csDisconnected:
 		{
 			// Probably some leftover data from the connection, don't know how to handle it, so drop it:
-			qDebug() << "Received data while disconnected: " << aData;
+			qDebug() << this << "Received data while disconnected: " << aData;
 			break;
 		}
 	}
@@ -729,11 +760,11 @@ bool Connection::extractAndHandleCleartextMessage()
 void Connection::handleCleartextMessage(const quint32 aMsgType, const QByteArray & aMsg)
 {
 	// DEBUG:
-	qDebug() << "Received cleartext message " << Utils::writeBE32(aMsgType);
+	qDebug() << this << "Received cleartext message " << Utils::writeBE32(aMsgType);
 
 	if (!mHasReceivedIdentification && (aMsgType != "dsms"_4cc))
 	{
-		qDebug() << "Didn't receive an identification message first; instead got " << Utils::writeBE32(aMsgType);
+		qDebug() << this << "Didn't receive an identification message first; instead got " << Utils::writeBE32(aMsgType);
 		terminate();
 		return;
 	}
@@ -776,7 +807,7 @@ void Connection::handleCleartextMessage(const quint32 aMsgType, const QByteArray
 		}
 		default:
 		{
-			qDebug() << "Unknown message received: " << Utils::writeBE32(aMsgType);
+			qDebug() << this << "Unknown message received: " << Utils::writeBE32(aMsgType);
 			terminate();
 			break;
 		}
@@ -791,13 +822,13 @@ void Connection::handleCleartextMessageDsms(const QByteArray & aMsg)
 {
 	if (aMsg.size() < 10)
 	{
-		qDebug() << "Received a too short protocol identification: " << aMsg.size() << " bytes";
+		qDebug() << this << "Received a too short protocol identification: " << aMsg.size() << " bytes";
 		terminate();
 		return;
 	}
 	if (!aMsg.startsWith("Deskemes"))
 	{
-		qDebug() << "Received an invalid protocol identification";
+		qDebug() << this << "Received an invalid protocol identification";
 		terminate();
 		return;
 	}
@@ -821,14 +852,25 @@ void Connection::handleCleartextMessageDsms(const QByteArray & aMsg)
 
 void Connection::handleCleartextMessageStls()
 {
+	qDebug() << this << "Received a TLS request";
+
 	// Check if we have all the information needed
 	if (
 		!mRemotePublicID.isPresent() ||
 		!mRemotePublicKeyData.isPresent()
 	)
 	{
-		qDebug() << "Remote asked for TLS, but hasn't provided PublicID or PublicKey, aborting connection";
+		qDebug() << this << "Remote asked for TLS, but hasn't provided PublicID or PublicKey, aborting connection";
 		terminate();
+		return;
+	}
+
+	// Check our pairing for the remote:
+	auto pairings = mComponents.get<DevicePairings>();
+	auto pairing = pairings->lookupDevice(mRemotePublicID.value());
+	if (!pairing.isPresent())
+	{
+		qDebug() << this << "Remote requested TLS, but we don't have a pairing for it";
 		return;
 	}
 
@@ -837,11 +879,16 @@ void Connection::handleCleartextMessageStls()
 	{
 		sendCleartextMessage("stls"_4cc);
 	}
-	qDebug() << "Received a TLS request, upgrading to TLS";
-
-	// TODO: Add an actual TLS filter
-
+	mTls = std::make_unique<CallbackSslContext>(*this);
+	auto config = SslConfig::makeDefaultConfig(false);
+	auto privKey = std::make_shared<CryptoKey>(pairing.value().mLocalPrivateKeyData.toStdString(), std::string());
+	auto pubKey = std::make_shared<CryptoKey>(pairing.value().mLocalPublicKeyData.toStdString());
+	auto cert = X509Cert::fromPrivateKey(privKey, pubKey, "CN=Deskemes");
+	config->setOwnCert(cert, privKey);
+	mTls->initialize(config);
 	setState(csEncrypted);
+	std::swap(mIncomingData, mIncomingDataEncrypted);  // All the data received from the socket after the "stls" is expected to be TLSed
+	processTls();
 
 	// Set up the command channel:
 	auto ch0 = std::make_shared<ChannelZero>(*this);
@@ -856,9 +903,8 @@ void Connection::handleCleartextMessageStls()
 	);
 
 	// Push the leftover data to the TLS filter:
-	QByteArray leftoverData;
-	std::swap(leftoverData, mIncomingData);
-	processIncomingData(leftoverData);
+	std::swap(mIncomingDataEncrypted, mIncomingData);
+	mTls->performHandshake();
 
 	emit established(this);
 }
@@ -877,7 +923,7 @@ void Connection::sendCleartextMessage(quint32 aMsgType, const QByteArray & aMsg)
 	}
 
 	// DEBUG:
-	qDebug() << "Sending cleartext message " << Utils::writeBE32(aMsgType);
+	qDebug() << this << "Sending cleartext message " << Utils::writeBE32(aMsgType);
 
 	QByteArray packet = Utils::writeBE32(aMsgType);
 	Utils::writeBE16Lstring(packet, aMsg);
@@ -957,13 +1003,95 @@ void Connection::addChannel(const quint16 aChannelID, Connection::ChannelPtr aCh
 
 void Connection::sendChannelMessage(const quint16 aChannelID, const QByteArray & aMessage)
 {
-	QByteArray buf;
-	Utils::writeBE16(buf, aChannelID);
-	Utils::writeBE16Lstring(buf, aMessage);
+	assert(mState == csEncrypted);
+	assert(mTls != nullptr);
 
-	// TODO: TLS
+	Utils::writeBE16(mOutgoingDataPlain, aChannelID);
+	Utils::writeBE16Lstring(mOutgoingDataPlain, aMessage);
+	processTls();
+}
 
-	mIO->write(buf);
+
+
+
+
+void Connection::processTls()
+{
+	assert(mState == csEncrypted);
+	assert(mTls != nullptr);
+
+	bool shouldLoop = true;
+	while (shouldLoop)
+	{
+		shouldLoop = false;
+
+		// Write the outgoing data, if possible:
+		if (!mOutgoingDataPlain.isEmpty())
+		{
+			auto numWritten = mTls->writePlain(mOutgoingDataPlain.constData(), static_cast<size_t>(mOutgoingDataPlain.size()));
+			if (numWritten > 0)
+			{
+				mOutgoingDataPlain.remove(0, numWritten);
+				shouldLoop = true;
+			}
+			else if (
+				(numWritten != MBEDTLS_ERR_SSL_WANT_READ) &&
+				(numWritten != MBEDTLS_ERR_SSL_WANT_WRITE)
+			)
+			{
+				qDebug("TLS writing failed: -0x%x", -numWritten);
+				terminate();
+			}
+		}
+
+		// Read the incoming data, if possible:
+		char buffer[3000];
+		auto numRead = mTls->readPlain(buffer, sizeof(buffer));
+		if (numRead > 0)
+		{
+			mIncomingData.append(buffer, numRead);
+			while (extractAndHandleMuxMessage())
+			{
+				// Empty loop body
+			}
+			shouldLoop = true;
+		}
+		else if (
+			(numRead != MBEDTLS_ERR_SSL_WANT_READ) &&
+			(numRead != MBEDTLS_ERR_SSL_WANT_WRITE)
+		)
+		{
+			qDebug("TLS reading failed: -0x%x", -numRead);
+			terminate();
+		}
+	}
+}
+
+
+
+
+
+int Connection::receiveEncrypted(unsigned char * aBuffer, size_t aNumBytes)
+{
+	if (mIncomingDataEncrypted.isEmpty())
+	{
+		return MBEDTLS_ERR_SSL_WANT_READ;
+	}
+	int numBytes = std::min(static_cast<int>(aNumBytes), mIncomingDataEncrypted.size());
+	memcpy(aBuffer, mIncomingDataEncrypted.constData(), static_cast<size_t>(numBytes));
+	mIncomingDataEncrypted.remove(0, numBytes);
+	qDebug() << this << "Returning " << numBytes << " bytes";
+	return numBytes;
+}
+
+
+
+
+
+int Connection::sendEncrypted(const unsigned char * aBuffer, size_t aNumBytes)
+{
+	qDebug() << this << "Writing " << aNumBytes << " bytes";
+	return static_cast<int>(mIO->write(reinterpret_cast<const char *>(aBuffer), static_cast<qint64>(aNumBytes)));
 }
 
 
@@ -982,7 +1110,7 @@ void Connection::ioReadyRead()
 		}
 		else if (numBytes < 0)
 		{
-			qDebug() << "Reading from IO failed";
+			qDebug() << this << "Reading from IO failed";
 			ioClosing();
 			return;
 		}
@@ -996,7 +1124,7 @@ void Connection::ioReadyRead()
 
 void Connection::ioClosing()
 {
-	qDebug() << "Disconnected";
+	qDebug() << this << "Disconnected";
 	setState(csDisconnected);
 	emit disconnected(this);
 

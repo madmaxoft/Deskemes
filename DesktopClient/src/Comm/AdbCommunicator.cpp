@@ -124,10 +124,10 @@ void AdbCommunicator::start()
 		return;
 	}
 	mState = csConnecting;
-	connect(&mSocket, QOverload<QAbstractSocket::SocketError>::of(&QTcpSocket::error), this, &AdbCommunicator::onSocketError);
-	connect(&mSocket, &QTcpSocket::connected,    this, &AdbCommunicator::onSocketConnected);
-	connect(&mSocket, &QTcpSocket::disconnected, this, &AdbCommunicator::onSocketDisconnected);
-	connect(&mSocket, &QTcpSocket::readyRead,    this, &AdbCommunicator::onSocketReadyRead);
+	connect(&mSocket, &QTcpSocket::errorOccurred, this, &AdbCommunicator::onSocketError);
+	connect(&mSocket, &QTcpSocket::connected,     this, &AdbCommunicator::onSocketConnected);
+	connect(&mSocket, &QTcpSocket::disconnected,  this, &AdbCommunicator::onSocketDisconnected);
+	connect(&mSocket, &QTcpSocket::readyRead,     this, &AdbCommunicator::onSocketReadyRead);
 	mSocket.connectToHost("localhost", ADB_LOCAL_PORT);
 }
 

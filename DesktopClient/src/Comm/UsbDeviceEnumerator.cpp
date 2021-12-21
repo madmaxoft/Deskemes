@@ -1,4 +1,6 @@
 #include "UsbDeviceEnumerator.hpp"
+#include <QHostAddress>
+#include <QNetworkInterface>
 #include "AdbCommunicator.hpp"
 #include "DetectedDevices.hpp"
 
@@ -102,6 +104,49 @@ void UsbDeviceEnumerator::setupPortReversing(const QByteArray & aDeviceID)
 
 
 
+void UsbDeviceEnumerator::initiateConnectionViaAdb(const QByteArray & aDeviceID)
+{
+	qDebug() << "Initiating connection via ADB on device " << aDeviceID;
+	auto adbStarter = new AdbCommunicator(this);
+	auto devID = aDeviceID;
+	auto shellCmd = QString::fromUtf8("am startservice -n cz.xoft.deskemes/.InitiateConnectionService --ei Port %1 --es Addresses \"").arg(mTcpListenerPort);
+
+	// Append all our IPs that are not loopback:
+	bool hasAddr = false;
+	for (const auto & address: QNetworkInterface::allAddresses())
+	{
+		if (
+			!address.isLoopback() &&
+			(
+				(address.protocol() == QAbstractSocket::IPv4Protocol) ||
+				(address.protocol() == QAbstractSocket::IPv6Protocol)
+			)
+		)
+		{
+			auto addrCopy = address;
+			addrCopy.setScopeId(QString());
+			shellCmd += QString::fromUtf8(" %1").arg(addrCopy.toString());
+			hasAddr = true;
+		}
+	}
+	if (!hasAddr)
+	{
+		qDebug() << "No suitable local addresses found, cannot initiate connection.";
+		return;
+	}
+	shellCmd += "\"";
+
+	// Hand everything over to ADB:
+	connect(adbStarter, &AdbCommunicator::connected,      [=](){adbStarter->assignDevice(devID);});
+	connect(adbStarter, &AdbCommunicator::deviceAssigned, [=](){adbStarter->shellExecuteV1(shellCmd.toUtf8());});
+	connect(adbStarter, &AdbCommunicator::disconnected,   adbStarter, &QObject::deleteLater);
+	adbStarter->start();
+}
+
+
+
+
+
 void UsbDeviceEnumerator::startConnectionByIntent(const QByteArray & aDeviceID)
 {
 	qDebug() << "Attempting to start the connection from the app on device " << aDeviceID;
@@ -174,7 +219,9 @@ void UsbDeviceEnumerator::onDeviceAdded(const QByteArray & aDeviceID, DetectedDe
 {
 	if (aStatus == DetectedDevices::Device::dsOnline)
 	{
-		setupPortReversing(aDeviceID);
+		// Doesn't work on some devices:
+		// setupPortReversing(aDeviceID);
+		initiateConnectionViaAdb(aDeviceID);
 	}
 }
 
@@ -186,6 +233,8 @@ void UsbDeviceEnumerator::onDeviceStatusChanged(const QByteArray & aDeviceID, De
 {
 	if (aStatus == DetectedDevices::Device::dsOnline)
 	{
-		setupPortReversing(aDeviceID);
+		// Doesn't work on some devices:
+		// setupPortReversing(aDeviceID);
+		initiateConnectionViaAdb(aDeviceID);
 	}
 }

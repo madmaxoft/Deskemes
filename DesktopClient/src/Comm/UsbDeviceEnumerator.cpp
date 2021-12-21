@@ -65,7 +65,7 @@ void UsbDeviceEnumerator::requestDeviceScreenshot(const QByteArray & aDeviceID)
 	QMetaObject::invokeMethod(
 		this, "invRequestDeviceScreenshot",
 		Qt::AutoConnection,
-		Q_ARG(const QByteArray &, aDeviceID)
+		Q_ARG(QByteArray, aDeviceID)
 	);
 }
 
@@ -93,8 +93,8 @@ void UsbDeviceEnumerator::setupPortReversing(const QByteArray & aDeviceID)
 	qDebug() << "Requesting port-reversing on device " << aDeviceID;
 	auto adbReverser = new AdbCommunicator(this);
 	auto devID = aDeviceID;
-	connect(adbReverser, &AdbCommunicator::connected,      [=](){adbReverser->assignDevice(devID);});
-	connect(adbReverser, &AdbCommunicator::deviceAssigned, [=](){adbReverser->portReverse(mTcpListenerPort, mTcpListenerPort);});
+	connect(adbReverser, &AdbCommunicator::connected,      this, [=](){adbReverser->assignDevice(devID);});
+	connect(adbReverser, &AdbCommunicator::deviceAssigned, this, [=](){adbReverser->portReverse(mTcpListenerPort, mTcpListenerPort);});
 	connect(adbReverser, &AdbCommunicator::portReversingEstablished, this, &UsbDeviceEnumerator::startConnectionByIntent);
 	connect(adbReverser, &AdbCommunicator::disconnected,   adbReverser, &QObject::deleteLater);
 	adbReverser->start();
@@ -132,6 +132,7 @@ void UsbDeviceEnumerator::initiateConnectionViaAdb(const QByteArray & aDeviceID)
 	if (!hasAddr)
 	{
 		qDebug() << "No suitable local addresses found, cannot initiate connection.";
+		adbStarter->deleteLater();
 		return;
 	}
 	shellCmd += "\"";

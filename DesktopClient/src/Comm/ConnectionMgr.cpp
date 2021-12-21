@@ -246,7 +246,7 @@ void ConnectionMgr::connEstablished(Connection * aConnection)
 {
 	assert(aConnection->state() == Connection::csEncrypted);
 
-	connect(aConnection, &Connection::disconnected,
+	connect(aConnection, &Connection::disconnected, aConnection,
 		[this](Connection * aCBConnection)
 		{
 			emit lostConnection(aCBConnection->shared_from_this());

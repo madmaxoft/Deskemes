@@ -72,7 +72,7 @@ public class ConnectionMgr
 
 
 
-	public ConnectionMgr(Context aContext, ApprovedPeers aApprovedPeers, ServiceSettings aSettings)
+	ConnectionMgr(Context aContext, ApprovedPeers aApprovedPeers, ServiceSettings aSettings)
 	{
 		mContext = aContext;
 		mApprovedPeers = aApprovedPeers;
@@ -150,55 +150,63 @@ public class ConnectionMgr
 		{
 			Log.d(TAG, "Cannot open selector", exc);
 		}
-		try
+		while (!mShouldTerminate)
 		{
-			while (!mShouldTerminate)
+			// Add any pending connections to mSelector:
+			synchronized (mRegistrationQueue)
 			{
-				// Add any pending connections to mSelector:
-				synchronized (mRegistrationQueue)
+				for (Connection c: mRegistrationQueue)
 				{
-					for (Connection c: mRegistrationQueue)
+					try
 					{
 						c.register(mSelector);
 					}
-					mRegistrationQueue.clear();
+					catch (IOException exc)
+					{
+						Log.d(TAG, "Failed to register connection", exc);
+					}
 				}
-
-				// Wait for any event on the connections:
-				mSelector.select();
-
-				// Process the event:
-				for (SelectionKey key: mSelector.selectedKeys())
-				{
-					if (!key.isValid())
-					{
-						continue;
-					}
-					try
-					{
-						if (key.isConnectable())
-						{
-							keyConnect(key);
-						}
-						if (key.isReadable())
-						{
-							keyRead(key);
-						}
-						if (key.isWritable())
-						{
-							keyWrite(key);
-						}
-					}
-					catch (CancelledKeyException exc)
-					{
-						// The connection was closed mid-processing, continue with the next
-					}
-				}  // for key: mSelector.selectedKeys()
+				mRegistrationQueue.clear();
 			}
-		}
-		catch (IOException exc)
-		{
-			Log.d(TAG, "Failed to handle TCP connections", exc);
+
+			// Wait for any event on the connections:
+			try
+			{
+				mSelector.select();
+			}
+			catch (IOException exc)
+			{
+				Log.d(TAG, "Failed to select sockets, TERMINATING PROCESSING!", exc);
+				return;
+			}
+
+			// Process the event:
+			for (SelectionKey key: mSelector.selectedKeys())
+			{
+				if (!key.isValid())
+				{
+					continue;
+				}
+				try
+				{
+					if (key.isConnectable())
+					{
+						keyConnect(key);
+					}
+					if (key.isReadable())
+					{
+						keyRead(key);
+					}
+					if (key.isWritable())
+					{
+						keyWrite(key);
+					}
+				}
+				catch (CancelledKeyException exc)
+				{
+					// The connection was closed mid-processing, continue with the next
+				}
+			}  // for key: mSelector.selectedKeys()
 		}
 	}
 
@@ -353,6 +361,19 @@ public class ConnectionMgr
 			Log.d(TAG, "Failed to connect to local.", exc);
 			return;
 		}
+		queueRegisterConnection(new Connection(mContext, mSettings, this, addr, null, null));
+	}
+
+
+
+
+
+	/** Creates a new connection to the specified host and port.
+	Used for initiating connections through ADB. */
+	void connectTo(String aHost, int aPort)
+	{
+		InetSocketAddress addr = new InetSocketAddress(aHost, aPort);
+		Log.d(TAG, "Connecting to " + addr);
 		queueRegisterConnection(new Connection(mContext, mSettings, this, addr, null, null));
 	}
 }

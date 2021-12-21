@@ -69,6 +69,10 @@ protected:
 	Called from mDetectedDevices when a new device is added to the list. */
 	void setupPortReversing(const QByteArray & aDeviceID);
 
+	/** Tries to make app initiate a connection to us by sending a InitiateConnectionServiec intent for all our IPs.
+	Called from mDetectedDevices when a new device is added to the list or becomes online. */
+	void initiateConnectionViaAdb(const QByteArray & aDeviceID);
+
 	/** Tries to start up the on-device app by invoking the LocalConnectService using an intent.
 	This will "ping" the app to connect to the local port, previously port-reversed through ADB to local computer. */
 	void startConnectionByIntent(const QByteArray & aDeviceID);

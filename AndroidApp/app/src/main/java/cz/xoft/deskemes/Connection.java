@@ -267,7 +267,14 @@ class Connection
 		Log.d(TAG, "Registering connection in a Selector");
 		mChannel = SocketChannel.open();
 		mChannel.configureBlocking(false);
-		mChannel.connect(mRemoteAddress);
+		try
+		{
+			mChannel.connect(mRemoteAddress);
+		}
+		catch (java.nio.channels.UnresolvedAddressException exc)
+		{
+			Log.d(TAG, "Failed to connect", exc);
+		}
 		mSelectionKey = mChannel.register(aSelector, SelectionKey.OP_CONNECT, this);
 		Log.d(TAG, "Registration done");
 	}

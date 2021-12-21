@@ -16,7 +16,13 @@
 		android:roundIcon="@mipmap/ic_launcher_round"
 		android:theme="@style/Theme.AppCompat.Light"
 		tools:ignore="GoogleAppIndexingWarning">
+		<service
+			android:name=".InitiateConnectionService"
+			android:enabled="true"
+			android:exported="true"></service>
+
 		<activity android:name=".ApprovePeerActivity" />
+
 		<service
 			android:name=".LocalConnectService"
 			android:enabled="true"
@@ -25,6 +31,7 @@
 		<activity android:name=".StatusActivity">
 			<intent-filter>
 				<action android:name="android.intent.action.MAIN" />
+
 				<category android:name="android.intent.category.LAUNCHER" />
 			</intent-filter>
 		</activity>

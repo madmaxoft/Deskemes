@@ -21,10 +21,11 @@ WndDevices::WndDevices(ComponentCollection & aComponents, QWidget * aParent):
 	Settings::loadWindowPos("WndDevices", *this);
 
 	auto mgr = mComponents.get<DeviceMgr>();
-	connect(mgr.get(), &DeviceMgr::deviceAdded,   this, &WndDevices::onDeviceAdded);
-	connect(mgr.get(), &DeviceMgr::deviceRemoved, this, &WndDevices::onDeviceRemoved);
-	connect(mUI->actDeviceNew, &QAction::triggered, this, &WndDevices::addNewDevice);
-	connect(mUI->actMessageSendNew, &QAction::triggered, this, &WndDevices::sendNewMessage);
+	connect(mgr.get(),              &DeviceMgr::deviceAdded,   this, &WndDevices::onDeviceAdded);
+	connect(mgr.get(),              &DeviceMgr::deviceRemoved, this, &WndDevices::onDeviceRemoved);
+	connect(mUI->actDeviceNew,      &QAction::triggered,       this, &WndDevices::addNewDevice);
+	connect(mUI->actMessageSendNew, &QAction::triggered,       this, &WndDevices::sendNewMessage);
+	connect(mUI->actExit,           &QAction::triggered,       this, &WndDevices::close);
 
 	// Add devices already present:
 	for (const auto & dev: mgr->devices())

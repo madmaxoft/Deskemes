@@ -41,7 +41,7 @@ void DetectedDevices::addDevice(const QByteArray & aEnumeratorDeviceID, Detected
 	QMetaObject::invokeMethod(
 		this, "invAddDevice",
 		Qt::AutoConnection,
-		Q_ARG(const QByteArray &, aEnumeratorDeviceID),
+		Q_ARG(QByteArray, aEnumeratorDeviceID),
 		Q_ARG(DetectedDevices::Device::Status, aStatus)
 	);
 }
@@ -55,7 +55,7 @@ void DetectedDevices::delDevice(const QByteArray & aEnumeratorDeviceID)
 	QMetaObject::invokeMethod(
 		this, "invDelDevice",
 		Qt::AutoConnection,
-		Q_ARG(const QByteArray &, aEnumeratorDeviceID)
+		Q_ARG(QByteArray, aEnumeratorDeviceID)
 	);
 }
 
@@ -68,7 +68,7 @@ void DetectedDevices::setDeviceStatus(const QByteArray & aEnumeratorDeviceID, De
 	QMetaObject::invokeMethod(
 		this, "invSetDeviceStatus",
 		Qt::AutoConnection,
-		Q_ARG(const QByteArray &, aEnumeratorDeviceID),
+		Q_ARG(QByteArray, aEnumeratorDeviceID),
 		Q_ARG(DetectedDevices::Device::Status, aStatus)
 	);
 }
@@ -82,8 +82,8 @@ void DetectedDevices::setDeviceName(const QByteArray & aEnumeratorDeviceID, cons
 	QMetaObject::invokeMethod(
 		this, "invSetDeviceName",
 		Qt::AutoConnection,
-		Q_ARG(const QByteArray &, aEnumeratorDeviceID),
-		Q_ARG(const QString &, aName)
+		Q_ARG(QByteArray, aEnumeratorDeviceID),
+		Q_ARG(QString, aName)
 	);
 }
 
@@ -96,8 +96,8 @@ void DetectedDevices::setDeviceAvatar(const QByteArray & aEnumeratorDeviceID, co
 	QMetaObject::invokeMethod(
 		this, "invSetDeviceAvatar",
 		Qt::AutoConnection,
-		Q_ARG(const QByteArray &, aEnumeratorDeviceID),
-		Q_ARG(const QImage &, aAvatar)
+		Q_ARG(QByteArray, aEnumeratorDeviceID),
+		Q_ARG(QImage, aAvatar)
 	);
 }
 

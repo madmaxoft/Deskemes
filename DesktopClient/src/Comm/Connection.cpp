@@ -846,7 +846,7 @@ void Connection::handleCleartextMessageStls()
 	// Set up the command channel:
 	auto ch0 = std::make_shared<ChannelZero>(*this);
 	mChannels[0] = ch0;
-	connect(ch0.get(), &ChannelZero::channelAcknowledged,
+	connect(ch0.get(), &ChannelZero::channelAcknowledged, ch0.get(),
 		[this](ChannelPtr aChannel)
 		{
 			QMutexLocker lock(&mMtxChannels);

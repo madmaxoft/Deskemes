@@ -68,6 +68,10 @@ public slots:
 	If the device responds with an error, the regular error() signal is emitted. */
 	void shellExecuteV1(const QByteArray & aCommand);
 
+	/** Tries to load the contents of the ADB pub key file (~/.android/adbkey.pub).
+	Returns the loaded un-base64-ed key on success, empty string on failure. */
+	static QByteArray getAdbPubKey();
+
 
 signals:
 

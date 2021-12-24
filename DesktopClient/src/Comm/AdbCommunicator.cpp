@@ -2,6 +2,8 @@
 #include <cassert>
 #include <limits>
 #include <thread>
+#include <QDir>
+#include "../Utils.hpp"
 
 
 
@@ -103,6 +105,24 @@ static uint32_t decodeLEUInt32(const char * aData)
 
 
 
+/** Returns the contents of the ADB public key file.
+Returns an empty QByteArray if the pub key file cannot be read. */
+static QByteArray loadAdbPubKeyFile()
+{
+	try
+	{
+		return Utils::readWholeFile(QDir::home().absoluteFilePath(".android/adbkey.pub"));
+	}
+	catch (...)
+	{
+		return {};
+	}
+}
+
+
+
+
+
 ////////////////////////////////////////////////////////////////////////////////
 // AdbCommunicator:
 
@@ -158,7 +178,6 @@ void AdbCommunicator::trackDevices()
 
 void AdbCommunicator::assignDevice(const QByteArray & aDeviceID)
 {
-	qDebug() << this << aDeviceID;
 	switch (mState)
 	{
 		case csReady:
@@ -182,7 +201,6 @@ void AdbCommunicator::assignDevice(const QByteArray & aDeviceID)
 
 void AdbCommunicator::takeScreenshot()
 {
-	qDebug() << this << mAssignedDeviceID;
 	switch (mState)
 	{
 		case csDeviceAssigned:
@@ -236,6 +254,25 @@ void AdbCommunicator::shellExecuteV1(const QByteArray & aCommand)
 	assert(mState == csDeviceAssigned);
 	writeHex4("shell:" + aCommand);
 	mState = csExecutingShellV1;
+}
+
+
+
+
+
+QByteArray AdbCommunicator::getAdbPubKey()
+{
+	auto pubKeyFile = loadAdbPubKeyFile();
+	if (pubKeyFile.isEmpty())
+	{
+		return {};
+	}
+	auto keyEnd = pubKeyFile.indexOf(' ');
+	if (keyEnd < 0)
+	{
+		return {};
+	}
+	return QByteArray::fromBase64(pubKeyFile.left(keyEnd));
 }
 
 

@@ -1,5 +1,7 @@
 #include "Utils.hpp"
 #include <cassert>
+#include <QFile>
+#include "Exception.hpp"
 
 
 
@@ -110,5 +112,23 @@ quint64 readBE64(const QByteArray & aData, int aIndex)
 	assert(aData.size() >= aIndex + 7);
 	return readBE64(reinterpret_cast<const quint8 *>(aData.constData()) + aIndex);
 }
+
+
+
+
+
+QByteArray readWholeFile(const QString & aFileName)
+{
+	QFile f(aFileName);
+	if (!f.open(QFile::ReadWrite))
+	{
+		throw RuntimeError("Cannot open file %1", aFileName);
+	}
+	return f.readAll();
+}
+
+
+
+
 
 }  // namespace Utils

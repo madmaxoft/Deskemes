@@ -40,6 +40,10 @@ quint32 readBE32(const QByteArray & aData, int aIndex = 0);
 /** Reads 8 bytes out of aBytes starting at the specified index and returns the big-endian value they represent. */
 quint64 readBE64(const QByteArray & aData, int aIndex = 0);
 
+/** Returns the contents of the specified file.
+Throws an Exception if the file cannot be read. */
+QByteArray readWholeFile(const QString & aFileName);
+
 
 
 

@@ -17,7 +17,7 @@ class Exception:
 {
 public:
 
-	/** Creates an exception with the specified values concatenated as the description. */
+	/** Creates an exception with the specified values formatted (as in QString.arg()) as the description. */
 	template <typename... OtherTs>
 	Exception(const QString & aFormatString, const OtherTs &... aArgValues):
 		std::runtime_error(format(aFormatString, aArgValues...).toStdString())

@@ -35,9 +35,15 @@ public slots:
 	is verified to be to a local ADB server. The error() signal is emitted on error. */
 	void start();
 
+	/** Asks ADB for the list of devices.
+	The devices are reported back using the updateDeviceList() signal.
+	ADB closes the connection after sending the whole device list. */
+	void listDevices();
+
 	/** Sends the "host:track-devices" request to ADB and goes into device tracking mode.
 	In this mode, ADB sends the list of devices periodically, it is parsed and reported by emitting updateDeviceList().
-	The communicator needs to be connected first (csReady). */
+	The communicator needs to be connected first (csReady).
+	Note that some ADB versions don't correctly report the device going from dsNeedAuth to dsOnline. */
 	void trackDevices();
 
 	/** Instructs the ADB server to switch the connection to the specified device.
@@ -118,6 +124,9 @@ protected:
 		csConnecting,  ///< Waiting for connection to the local ADB server.
 		csReady,       ///< Connected to the local ADB server, ready for any command.
 		csBroken,      ///< An irrecoverable error has been detected on the socket, communication cannot continue.
+
+		csListingDevicesStart,  ///< after listDevices() has been called, waiting for the OKAY response
+		csListingDevices,       ///< after listDevices() has been called, waiting for the device list.
 
 		csTrackingDevicesStart,  ///< after trackDevices() has been called, waiting for the OKAY response.
 		csTrackingDevices,       ///< after trackDevices() has been called, tracking device list changes.

@@ -155,6 +155,24 @@ void AdbCommunicator::start()
 
 
 
+void AdbCommunicator::listDevices()
+{
+	assert(mState == csReady);
+	mState = csListingDevicesStart;
+	qDebug() << "Requesting device list";
+	writeHex4("host:devices");
+	/*
+	Expected response:
+	OKAY
+	<len><ID>\t<status>\n<ID>\t<status>...
+	(socket close)
+	*/
+}
+
+
+
+
+
 void AdbCommunicator::trackDevices()
 {
 	assert(mState == csReady);
@@ -483,6 +501,25 @@ void AdbCommunicator::onSocketReadyRead()
 			{
 				// Ignore the data, close socket not to handle any more
 				mSocket.close();
+				break;
+			}
+
+			case csListingDevicesStart:
+			{
+				if (extractOkayOrFail())
+				{
+					mState = csListingDevices;
+				}
+				break;
+			}
+
+			case csListingDevices:
+			{
+				auto packet = extractHex4Packet();
+				if (packet.first)
+				{
+					parseDeviceList(packet.second);
+				}
 				break;
 			}
 

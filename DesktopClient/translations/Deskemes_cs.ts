@@ -55,9 +55,17 @@
     </message>
 </context>
 <context>
-    <name>DetectedDevices</name>
+    <name>DetectedDevicesModel</name>
     <message>
         <source>Online</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Not paired</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Need pairing</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -69,7 +77,11 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Status</source>
+        <source>Blacklisted</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>App not installed</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -77,23 +89,11 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Not paired</source>
+        <source>Status</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <source>Avatar</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Need pairing</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Blacklisted</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>App not installed</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -136,41 +136,31 @@
     </message>
 </context>
 <context>
-    <name>PgConnectionType</name>
+    <name>PgDeviceList</name>
     <message>
         <source>Form</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>WiFi / LAN (TCP-IP)</source>
+        <source>Select your device when it appears in the list:</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>PgNeedAuth</name>
+    <message>
+        <source>WizardPage</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Bluetooth</source>
+        <source>The device currently doesn&apos;t trust the USB connection to this computer. Please check the device, it should be prompting you to accept the USB connection. If there&apos;s no prompt on the device, unplug it and plug it in again.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>USB cable</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Please select the type of connection you would like to use:</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>This is the best connection method to use for the first time. The necessary application will be automatically installed on the device.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>This is the most comfortable connection type. As soon as a device is on the same LAN as this computer, they will connect. Manual first time setup is needed though.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Practically the same comfort as WiFi / LAN, although Bluetooth usually has shorter range. Again, manual first time setup is needed.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Connection type:</source>
+        <source>This computer&apos;s RSA key fingerprint is:
+%1 (MD5)
+  -- or --
+%2 (SHA256)</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -249,24 +239,6 @@ Check that the thumbprint image displayed here matches the thumbprint image disp
     </message>
     <message>
         <source>The device has been successfully added</source>
-        <translation type="unfinished"></translation>
-    </message>
-</context>
-<context>
-    <name>PgTcpDeviceList</name>
-    <message>
-        <source>Form</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Select your device when it appears in the list:</source>
-        <translation type="unfinished"></translation>
-    </message>
-</context>
-<context>
-    <name>PgUsbDeviceList</name>
-    <message>
-        <source>Form</source>
         <translation type="unfinished"></translation>
     </message>
 </context>

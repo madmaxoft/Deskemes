@@ -81,6 +81,7 @@ public:
 
 	// Simple getters:
 	const QByteArray & connectionID() const { return mConnectionID; }
+	TransportKind transportKind() const { return mTransportKind; }
 	const Optional<QString> & friendlyName() const { return mFriendlyName; }
 	const Optional<QByteArray> & avatar() const { return mAvatar; }
 	const Optional<QByteArray> & remotePublicID() const { return mRemotePublicID; }
@@ -90,6 +91,12 @@ public:
 	// Simple setters:
 	void setFriendlyName(const QString & aFriendlyName) { mFriendlyName = aFriendlyName; emit receivedFriendlyName(this); }
 	void setAvatar(const QByteArray & aAvatar) { mAvatar = aAvatar; emit receivedAvatar(this); }
+
+	/** Returns the (implied) enumerator kind that created this connection. */
+	ComponentCollection::ComponentKind enumeratorKind() const { return enumeratorKindFromTransportKind(mTransportKind); }
+
+	/** Translates the TransportKind into the respective enumerator kind. */
+	static ComponentCollection::ComponentKind enumeratorKindFromTransportKind(TransportKind aTransportKind);
 
 	/** Terminates the connection forcefully. */
 	Q_INVOKABLE void terminate();

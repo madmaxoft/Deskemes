@@ -455,6 +455,20 @@ Connection::Connection(
 
 
 
+ComponentCollection::ComponentKind Connection::enumeratorKindFromTransportKind(Connection::TransportKind aTransportKind)
+{
+	switch (aTransportKind)
+	{
+		case tkUsb: return ComponentCollection::ckUsbDeviceEnumerator;
+		case tkTcp: return ComponentCollection::ckTcpListener;
+		case tkBluetooth: return ComponentCollection::ckBluetoothDeviceEnumerator;
+	}
+}
+
+
+
+
+
 void Connection::terminate()
 {
 	mIO->close();

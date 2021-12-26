@@ -104,8 +104,6 @@ int main(int argc, char *argv[])
 		// Initialize singletons / subsystems:
 		BackgroundTasks::get();
 		qRegisterMetaType<DevicePtr>();
-		qRegisterMetaType<DetectedDevices::Device::Status>();
-		qRegisterMetaType<DetectedDevices::DeviceStatusList>();
 		qRegisterMetaType<Connection *>();
 		qRegisterMetaType<ConnectionPtr>();
 		ComponentCollection cc;

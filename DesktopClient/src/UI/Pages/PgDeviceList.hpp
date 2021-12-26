@@ -11,17 +11,18 @@
 // fwd:
 class ComponentCollection;
 class NewDeviceWizard;
+class DetectedDevicesModel;
 namespace Ui
 {
-	class PgTcpDeviceList;
+	class PgDeviceList;
 }
 
 
 
 
 
-/** The wizard page that shows the devices available through TCP, while detection runs in the background. */
-class PgTcpDeviceList:
+/** The wizard page that shows the available devices, while detection runs in the background. */
+class PgDeviceList:
 	public QWizardPage
 {
 	using Super = QWizardPage;
@@ -31,9 +32,9 @@ class PgTcpDeviceList:
 
 public:
 
-	explicit PgTcpDeviceList(ComponentCollection & aComponents, NewDeviceWizard & aParent);
+	explicit PgDeviceList(ComponentCollection & aComponents, NewDeviceWizard & aParent);
 
-	virtual ~PgTcpDeviceList() override;
+	virtual ~PgDeviceList() override;
 
 
 	// QWizardPage overrides:
@@ -51,10 +52,10 @@ private:
 	NewDeviceWizard & mParent;
 
 	/** The Qt-managed UI. */
-	std::unique_ptr<Ui::PgTcpDeviceList> mUI;
+	std::unique_ptr<Ui::PgDeviceList> mUI;
 
-	/** The detected devices list, model for the UI. */
-	std::shared_ptr<DetectedDevices> mDetectedDevices;
+	/** The detected devices model for the UI. */
+	std::unique_ptr<DetectedDevicesModel> mDetectedDevicesModel;
 
 
 	/** Returns the device that is selected in the UI.
@@ -62,7 +63,7 @@ private:
 	DetectedDevices::DevicePtr selectedDevice() const;
 
 
-protected slots:
+protected Q_SLOTS:
 
 	/** The user has double-clicked a device, go to the next page with that device. */
 	void deviceDoubleClicked(const QModelIndex & aIndex);

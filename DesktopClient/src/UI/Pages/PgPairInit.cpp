@@ -40,6 +40,7 @@ PgPairInit::~PgPairInit()
 void PgPairInit::initializePage()
 {
 	auto conn = mParent.connection();
+	assert(conn != nullptr);
 	assert(conn->remotePublicID().isPresent());
 	connect(conn.get(), &Connection::receivedPublicKey, this, &PgPairInit::receivedPublicKey);
 	auto displayName = conn->friendlyName().valueOr(Utils::toHex(conn->remotePublicID().value()));

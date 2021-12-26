@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>PgTcpDeviceList</class>
- <widget class="QWidget" name="PgTcpDeviceList">
+ <class>PgDeviceList</class>
+ <widget class="QWidget" name="PgDeviceList">
   <property name="geometry">
    <rect>
     <x>0</x>

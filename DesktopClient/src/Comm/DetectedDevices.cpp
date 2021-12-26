@@ -11,9 +11,11 @@
 // DetectedDevices::Device:
 
 DetectedDevices::Device::Device(
+	ComponentCollection::ComponentKind aEnumeratorKind,
 	const QByteArray & aEnumeratorDeviceID,
 	DetectedDevices::Device::Status aStatus
 ):
+	mEnumeratorKind(aEnumeratorKind),
 	mEnumeratorDeviceID(aEnumeratorDeviceID),
 	mStatus(aStatus)
 {
@@ -26,8 +28,8 @@ DetectedDevices::Device::Device(
 ////////////////////////////////////////////////////////////////////////////////
 // DetectedDevices:
 
-DetectedDevices::DetectedDevices(QObject * aParent):
-	Super(aParent)
+DetectedDevices::DetectedDevices(ComponentCollection & aComponents):
+	ComponentSuper(aComponents)
 {
 
 }
@@ -36,14 +38,33 @@ DetectedDevices::DetectedDevices(QObject * aParent):
 
 
 
-void DetectedDevices::addDevice(const QByteArray & aEnumeratorDeviceID, DetectedDevices::Device::Status aStatus)
+void DetectedDevices::addDevice(ComponentCollection::ComponentKind aEnumeratorKind, const QByteArray & aEnumeratorDeviceID, DetectedDevices::Device::Status aStatus)
 {
-	QMetaObject::invokeMethod(
-		this, "invAddDevice",
-		Qt::AutoConnection,
-		Q_ARG(QByteArray, aEnumeratorDeviceID),
-		Q_ARG(DetectedDevices::Device::Status, aStatus)
-	);
+	QMutexLocker lock(&mtxDevices);
+	qDebug() << "Adding device " << aEnumeratorDeviceID;
+
+	// If the device is already present, only update status:
+	for (auto & dev: mDevices)
+	{
+		if (dev->enumeratorDeviceID() != aEnumeratorDeviceID)
+		{
+			continue;
+		}
+		if (dev->status() == aStatus)
+		{
+			return;
+		}
+		dev->setStatus(aStatus);
+		lock.unlock();
+		emit deviceStatusChanged(dev);
+		return;
+	}
+
+	// Device not found, create a new one:
+	auto dev = std::make_shared<Device>(aEnumeratorKind, aEnumeratorDeviceID, aStatus);
+	mDevices.push_back(dev);
+	lock.unlock();
+	emit deviceAdded(dev);
 }
 
 
@@ -52,25 +73,37 @@ void DetectedDevices::addDevice(const QByteArray & aEnumeratorDeviceID, Detected
 
 void DetectedDevices::delDevice(const QByteArray & aEnumeratorDeviceID)
 {
-	QMetaObject::invokeMethod(
-		this, "invDelDevice",
-		Qt::AutoConnection,
-		Q_ARG(QByteArray, aEnumeratorDeviceID)
-	);
+	QMutexLocker lock(&mtxDevices);
+	qDebug() << "Removing device " << aEnumeratorDeviceID;
+
+	int row = -1;
+	for (auto & dev: mDevices)
+	{
+		row += 1;
+		if (dev->enumeratorDeviceID() != aEnumeratorDeviceID)
+		{
+			continue;
+		}
+		mDevices.erase(mDevices.begin() + row);
+		lock.unlock();
+		emit deviceRemoved(dev);
+		return;
+	}
+
+	qDebug() << "Device " << aEnumeratorDeviceID << " not found";
 }
 
 
 
 
 
-void DetectedDevices::setDeviceStatus(const QByteArray & aEnumeratorDeviceID, DetectedDevices::Device::Status aStatus)
+void DetectedDevices::setDeviceStatus(
+	ComponentCollection::ComponentKind aEnumeratorKind,
+	const QByteArray & aEnumeratorDeviceID,
+	DetectedDevices::Device::Status aStatus
+)
 {
-	QMetaObject::invokeMethod(
-		this, "invSetDeviceStatus",
-		Qt::AutoConnection,
-		Q_ARG(QByteArray, aEnumeratorDeviceID),
-		Q_ARG(DetectedDevices::Device::Status, aStatus)
-	);
+	addDevice(aEnumeratorKind, aEnumeratorDeviceID, aStatus);
 }
 
 
@@ -79,12 +112,20 @@ void DetectedDevices::setDeviceStatus(const QByteArray & aEnumeratorDeviceID, De
 
 void DetectedDevices::setDeviceName(const QByteArray & aEnumeratorDeviceID, const QString & aName)
 {
-	QMetaObject::invokeMethod(
-		this, "invSetDeviceName",
-		Qt::AutoConnection,
-		Q_ARG(QByteArray, aEnumeratorDeviceID),
-		Q_ARG(QString, aName)
-	);
+	QMutexLocker lock(&mtxDevices);
+	for (auto & dev: mDevices)
+	{
+		if (dev->enumeratorDeviceID() != aEnumeratorDeviceID)
+		{
+			continue;
+		}
+		dev->setName(aName);
+		lock.unlock();
+		emit deviceNameChanged(dev);
+		return;
+	}
+
+	qDebug() << "Device " << aEnumeratorDeviceID << " not found";
 }
 
 
@@ -93,12 +134,20 @@ void DetectedDevices::setDeviceName(const QByteArray & aEnumeratorDeviceID, cons
 
 void DetectedDevices::setDeviceAvatar(const QByteArray & aEnumeratorDeviceID, const QImage & aAvatar)
 {
-	QMetaObject::invokeMethod(
-		this, "invSetDeviceAvatar",
-		Qt::AutoConnection,
-		Q_ARG(QByteArray, aEnumeratorDeviceID),
-		Q_ARG(QImage, aAvatar)
-	);
+	QMutexLocker lock(&mtxDevices);
+	for (auto & dev: mDevices)
+	{
+		if (dev->enumeratorDeviceID() != aEnumeratorDeviceID)
+		{
+			continue;
+		}
+		dev->setAvatar(aAvatar);
+		lock.unlock();
+		emit deviceAvatarChanged(dev);
+		return;
+	}
+
+	qDebug() << "Device " << aEnumeratorDeviceID << " not found";
 }
 
 
@@ -120,252 +169,21 @@ void DetectedDevices::setDeviceAvatar(const QByteArray & aEnumeratorDeviceID, co
 
 
 
-void DetectedDevices::updateDeviceList(const DeviceStatusList & aNewDeviceList
+void DetectedDevices::updateEnumeratorDeviceList(
+	ComponentCollection::ComponentKind aEnumeratorKind,
+	const DeviceStatusList & aNewDeviceList
 )
 {
-	QMetaObject::invokeMethod(
-		this, "invUpdateDeviceList",
-		Qt::AutoConnection,
-		Q_ARG(DetectedDevices::DeviceStatusList, aNewDeviceList)
-	);
-}
+	QMutexLocker lock(&mtxDevices);
 
-
-
-
-
-int DetectedDevices::rowCount(const QModelIndex & aParent) const
-{
-	if (aParent.isValid())
-	{
-		assert(!"Tables shouldn't have a parent");
-		return 0;
-	}
-	return static_cast<int>(mDevices.size());
-}
-
-
-
-
-
-int DetectedDevices::columnCount(const QModelIndex & aParent) const
-{
-	Q_UNUSED(aParent);
-	return colMax;
-}
-
-
-
-
-
-QVariant DetectedDevices::data(const QModelIndex & aIndex, int aRole) const
-{
-	if (!aIndex.isValid())
-	{
-		assert(!"Invalid index");
-		return {};
-	}
-	auto row = aIndex.row();
-	if ((row < 0) || (static_cast<size_t>(row) >= mDevices.size()))
-	{
-		assert(!"Invalid row");
-		return {};
-	}
-	const auto & device = mDevices[static_cast<size_t>(row)];
-	switch (aRole)
-	{
-		case roleDevPtr:
-		{
-			return QVariant::fromValue(device);
-		}
-		case Qt::DisplayRole:
-		{
-			switch (aIndex.column())
-			{
-				case colDevice:
-				{
-					if (device->name().isEmpty())
-					{
-						return QString::fromUtf8(device->enumeratorDeviceID());
-					}
-					else
-					{
-						return device->name();
-					}
-				}
-				case colStatus:
-				{
-					switch (device->status())
-					{
-						case Device::dsOnline:       return tr("Online");
-						case Device::dsNoPubKey:     return tr("Not paired");
-						case Device::dsNeedPairing:  return tr("Need pairing");
-						case Device::dsUnauthorized: return tr("Authorization needed");
-						case Device::dsOffline:      return tr("Offline");
-						case Device::dsBlacklisted:  return tr("Blacklisted");
-						case Device::dsNeedApp:      return tr("App not installed");
-					}
-					return {};
-				}
-			}
-			break;
-		}		// case Qt::DisplayRole
-
-		case Qt::DecorationRole:
-		{
-			switch (aIndex.column())
-			{
-				case colAvatar: return device->avatar();
-			}
-			break;
-		}
-	}
-	return {};
-}
-
-
-
-
-
-QVariant DetectedDevices::headerData(int aSection, Qt::Orientation aOrientation, int aRole) const
-{
-	if ((aOrientation != Qt::Horizontal) || (aRole != Qt::DisplayRole))
-	{
-		return {};
-	}
-	switch (aSection)
-	{
-		case colDevice:  return tr("Device");
-		case colStatus:  return tr("Status");
-		case colAvatar:  return tr("Avatar");
-	}
-	return {};
-}
-
-
-
-
-
-void DetectedDevices::invAddDevice(const QByteArray & aEnumeratorDeviceID, DetectedDevices::Device::Status aStatus)
-{
-	// If the device is already present, only update status:
-	int row = -1;
-	for (auto & dev: mDevices)
-	{
-		row += 1;
-		if (dev->enumeratorDeviceID() != aEnumeratorDeviceID)
-		{
-			continue;
-		}
-		if (dev->status() == aStatus)
-		{
-			return;
-		}
-		dev->setStatus(aStatus);
-		auto idx = index(row, colStatus);
-		emit deviceStatusChanged(aEnumeratorDeviceID, aStatus);
-		emit dataChanged(idx, idx);
-		return;
-	}
-
-	// Device not found, create a new one:
-	auto dev = std::make_shared<Device>(aEnumeratorDeviceID, aStatus);
-	auto numDevices = static_cast<int>(mDevices.size());
-	beginInsertRows({}, numDevices, numDevices);
-	mDevices.push_back(dev);
-	endInsertRows();
-	emit deviceAdded(aEnumeratorDeviceID, aStatus);
-}
-
-
-
-
-
-void DetectedDevices::invDelDevice(const QByteArray & aEnumeratorDeviceID)
-{
-	int row = -1;
-	for (auto & dev: mDevices)
-	{
-		row += 1;
-		if (dev->enumeratorDeviceID() != aEnumeratorDeviceID)
-		{
-			continue;
-		}
-		beginRemoveRows({}, row, row);
-		mDevices.erase(mDevices.begin() + row);
-		endRemoveRows();
-		return;
-	}
-
-	qDebug() << "Device " << aEnumeratorDeviceID << " not found";
-}
-
-
-
-
-
-void DetectedDevices::invSetDeviceStatus(const QByteArray & aEnumeratorDeviceID, DetectedDevices::Device::Status aStatus)
-{
-	invAddDevice(aEnumeratorDeviceID, aStatus);
-}
-
-
-
-
-
-void DetectedDevices::invSetDeviceName(const QByteArray & aEnumeratorDeviceID, const QString & aName)
-{
-	int row = -1;
-	for (auto & dev: mDevices)
-	{
-		row += 1;
-		if (dev->enumeratorDeviceID() != aEnumeratorDeviceID)
-		{
-			continue;
-		}
-		dev->setName(aName);
-		auto idx = index(row, colDevice);
-		emit dataChanged(idx, idx);
-		return;
-	}
-
-	qDebug() << "Device " << aEnumeratorDeviceID << " not found";
-}
-
-
-
-
-
-void DetectedDevices::invSetDeviceAvatar(const QByteArray & aEnumeratorDeviceID, const QImage & aAvatar)
-{
-	int row = -1;
-	for (auto & dev: mDevices)
-	{
-		row += 1;
-		if (dev->enumeratorDeviceID() != aEnumeratorDeviceID)
-		{
-			continue;
-		}
-		dev->setAvatar(aAvatar);
-		auto idx = index(row, colAvatar);
-		emit dataChanged(idx, idx);
-		return;
-	}
-
-	qDebug() << "Device " << aEnumeratorDeviceID << " not found";
-}
-
-
-
-
-
-void DetectedDevices::invUpdateDeviceList(const DetectedDevices::DeviceStatusList & aNewDeviceList)
-{
 	// Remove all devices no longer known:
 	std::set<QByteArray> devicesToRemove;
 	for (const auto & dev: mDevices)
 	{
-		devicesToRemove.insert(dev->enumeratorDeviceID());
+		if (dev->enumeratorKind() == aEnumeratorKind)
+		{
+			devicesToRemove.insert(dev->enumeratorDeviceID());
+		}
 	}
 	for (const auto & nd: aNewDeviceList)
 	{
@@ -373,12 +191,22 @@ void DetectedDevices::invUpdateDeviceList(const DetectedDevices::DeviceStatusLis
 	}
 	for (const auto & rd: devicesToRemove)
 	{
-		invDelDevice(rd);
+		delDevice(rd);
 	}
 
 	// Add all devices not known yet:
 	for (const auto & nd: aNewDeviceList)
 	{
-		invAddDevice(nd.first, nd.second);
+		addDevice(aEnumeratorKind, nd.first, nd.second);
 	}
+}
+
+
+
+
+
+std::vector<DetectedDevices::DevicePtr> DetectedDevices::devices() const
+{
+	QMutexLocker lock(&mtxDevices);
+	return mDevices;  // Returns a copy of mDevices
 }

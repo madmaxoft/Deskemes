@@ -1,6 +1,7 @@
 #include "UsbDeviceEnumerator.hpp"
 #include <QHostAddress>
 #include <QNetworkInterface>
+#include <QProcess>
 #include "AdbCommunicator.hpp"
 #include "DetectedDevices.hpp"
 #include "TcpListener.hpp"
@@ -15,8 +16,6 @@ UsbDeviceEnumerator::UsbDeviceEnumerator(ComponentCollection & aComponents):
 	requireForStart(ComponentCollection::ckTcpListener);
 	setObjectName("UsbDeviceEnumerator");
 	moveToThread(this);
-	connect(&mDetectedDevices, &DetectedDevices::deviceAdded,         this, &UsbDeviceEnumerator::onDeviceAdded);
-	connect(&mDetectedDevices, &DetectedDevices::deviceStatusChanged, this, &UsbDeviceEnumerator::onDeviceStatusChanged);
 }
 
 
@@ -219,7 +218,8 @@ void UsbDeviceEnumerator::updateDeviceList(
 	{
 		dsl.push_back({id, DetectedDevices::Device::dsOffline});
 	}
-	mDetectedDevices.updateDeviceList(dsl);
+	auto dd = mComponents.get<DetectedDevices>();
+	dd->updateEnumeratorDeviceList(ComponentCollection::ckUsbDeviceEnumerator, dsl);
 }
 
 
@@ -228,33 +228,5 @@ void UsbDeviceEnumerator::updateDeviceList(
 
 void UsbDeviceEnumerator::updateDeviceLastScreenshot(const QByteArray & aDeviceID, const QImage & aScreenshot)
 {
-	mDetectedDevices.setDeviceAvatar(aDeviceID, aScreenshot);
-}
-
-
-
-
-
-void UsbDeviceEnumerator::onDeviceAdded(const QByteArray & aDeviceID, DetectedDevices::Device::Status aStatus)
-{
-	if (aStatus == DetectedDevices::Device::dsOnline)
-	{
-		// Doesn't work on some devices:
-		// setupPortReversing(aDeviceID);
-		initiateConnectionViaAdb(aDeviceID);
-	}
-}
-
-
-
-
-
-void UsbDeviceEnumerator::onDeviceStatusChanged(const QByteArray & aDeviceID, DetectedDevices::Device::Status aStatus)
-{
-	if (aStatus == DetectedDevices::Device::dsOnline)
-	{
-		// Doesn't work on some devices:
-		// setupPortReversing(aDeviceID);
-		initiateConnectionViaAdb(aDeviceID);
-	}
+	mComponents.get<DetectedDevices>()->setDeviceAvatar(aDeviceID, aScreenshot);
 }

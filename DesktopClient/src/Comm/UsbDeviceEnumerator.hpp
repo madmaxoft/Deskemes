@@ -43,16 +43,11 @@ public:
 
 	virtual ~UsbDeviceEnumerator() override;
 
-	const DetectedDevices & detectedDevices() const { return mDetectedDevices; }
-
 	/** Starts the enumerator. */
 	virtual void start() override;
 
 
 protected:
-
-	/** The storage for the detected devices. */
-	DetectedDevices mDetectedDevices;
 
 	/** The TCP port to which the traffic from the devices is redirected using ADB port-forwaring. */
 	quint16 mTcpListenerPort;
@@ -98,11 +93,4 @@ protected Q_SLOTS:
 	/** Updates the last screenshot stored in mDevices[] for the specified device.
 	If the device is not in mDevices[], ignored. */
 	void updateDeviceLastScreenshot(const QByteArray & aDeviceID, const QImage & aScreenshot);
-
-	/** Called when a device is added to the list of detected devices.
-	If the device is online, sets up port-reversing. */
-	void onDeviceAdded(const QByteArray & aDeviceID, DetectedDevices::Device::Status aStatus);
-
-	/** If the device is going online, sets up port-reversing. */
-	void onDeviceStatusChanged(const QByteArray & aDeviceID, DetectedDevices::Device::Status aStatus);
 };

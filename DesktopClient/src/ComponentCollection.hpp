@@ -36,10 +36,12 @@ public:
 		ckDevices,
 		ckUdpBroadcaster,
 		ckTcpListener,
-		ckDevicePairings,       ///< The storage of the device pairing data (DevPubID <-> {DevPubKey, LocalPubKey})
-		ckDeviceBlacklist,      ///< The storage of device blacklist
-		ckConnectionMgr,        ///< The list of all device connections
-		ckUsbDeviceEnumerator,  ///< The background thread that monitors the connected USB devices
+		ckDevicePairings,             ///< The storage of the device pairing data (DevPubID <-> {DevPubKey, LocalPubKey})
+		ckDeviceBlacklist,            ///< The storage of device blacklist
+		ckConnectionMgr,              ///< The list of all current device connections
+		ckDetectedDevices,            ///< All the devices that have been detected by the enumerators
+		ckUsbDeviceEnumerator,        ///< The background thread that monitors the connected USB devices
+		ckBluetoothDeviceEnumerator,  ///< The background thread that monitors the available Bluetooth devices
 	};
 
 

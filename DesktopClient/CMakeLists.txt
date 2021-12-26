@@ -166,6 +166,7 @@ set(SOURCES
 	src/DB/DeviceBlacklist.cpp
 
 	# The UI sources:
+	src/UI/DetectedDevicesModel.cpp
 	src/UI/DlgSendText.cpp
 	src/UI/NewDeviceWizard.cpp
 	src/UI/WgtDevice.cpp
@@ -173,13 +174,12 @@ set(SOURCES
 	src/UI/WndDevices.cpp
 
 	# The Wizard pages:
-	src/UI/Pages/PgConnectionType.cpp
+	src/UI/Pages/PgDeviceList.cpp
+	src/UI/Pages/PgNeedAuth.cpp
 	src/UI/Pages/PgPairConfirm.cpp
 	src/UI/Pages/PgPairInit.cpp
 	src/UI/Pages/PgPairingInProgress.cpp
 	src/UI/Pages/PgSucceeded.cpp
-	src/UI/Pages/PgTcpDeviceList.cpp
-	src/UI/Pages/PgUsbDeviceList.cpp
 
 	src/BackgroundTasks.cpp
 	src/ComponentCollection.cpp
@@ -214,6 +214,7 @@ set(HEADERS
 	src/DB/DeviceBlacklist.hpp
 
 	# The UI headers:
+	src/UI/DetectedDevicesModel.hpp
 	src/UI/DlgSendText.hpp
 	src/UI/NewDeviceWizard.hpp
 	src/UI/WgtDevice.hpp
@@ -221,13 +222,12 @@ set(HEADERS
 	src/UI/WndDevices.hpp
 
 	# The Wizard pages:
-	src/UI/Pages/PgConnectionType.hpp
+	src/UI/Pages/PgDeviceList.hpp
+	src/UI/Pages/PgNeedAuth.hpp
 	src/UI/Pages/PgPairConfirm.hpp
 	src/UI/Pages/PgPairInit.hpp
 	src/UI/Pages/PgPairingInProgress.hpp
 	src/UI/Pages/PgSucceeded.hpp
-	src/UI/Pages/PgTcpDeviceList.hpp
-	src/UI/Pages/PgUsbDeviceList.hpp
 
 	src/BackgroundTasks.hpp
 	src/ComponentCollection.hpp
@@ -246,12 +246,11 @@ set(UI
 	src/UI/WgtDevice.ui
 	src/UI/WndDevices.ui
 
-	src/UI/Pages/PgConnectionType.ui
+	src/UI/Pages/PgDeviceList.ui
+	src/UI/Pages/PgNeedAuth.ui
 	src/UI/Pages/PgPairConfirm.ui
 	src/UI/Pages/PgPairInit.ui
 	src/UI/Pages/PgPairingInProgress.ui
-	src/UI/Pages/PgTcpDeviceList.ui
-	src/UI/Pages/PgUsbDeviceList.ui
 )
 
 set(RESOURCES

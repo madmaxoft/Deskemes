@@ -3,14 +3,16 @@
 #include <QNetworkInterface>
 #include "AdbCommunicator.hpp"
 #include "DetectedDevices.hpp"
+#include "TcpListener.hpp"
 
 
 
 
 
 UsbDeviceEnumerator::UsbDeviceEnumerator(ComponentCollection & aComponents):
-	mComponents(aComponents)
+	ComponentSuper(aComponents)
 {
+	requireForStart(ComponentCollection::ckTcpListener);
 	setObjectName("UsbDeviceEnumerator");
 	moveToThread(this);
 	connect(&mDetectedDevices, &DetectedDevices::deviceAdded,         this, &UsbDeviceEnumerator::onDeviceAdded);
@@ -34,9 +36,9 @@ UsbDeviceEnumerator::~UsbDeviceEnumerator()
 
 
 
-void UsbDeviceEnumerator::start(quint16 aTcpListenerPort)
+void UsbDeviceEnumerator::start()
 {
-	mTcpListenerPort = aTcpListenerPort;
+	mTcpListenerPort = mComponents.get<TcpListener>()->listeningPort();
 	QThread::start();
 }
 

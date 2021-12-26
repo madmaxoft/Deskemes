@@ -18,6 +18,8 @@ class UdpBroadcaster:
 	public ComponentCollection::Component<ComponentCollection::ckUdpBroadcaster>
 {
 	using Super = QObject;
+	using ComponentSuper = ComponentCollection::Component<ComponentCollection::ckUdpBroadcaster>;
+
 	Q_OBJECT
 
 
@@ -48,9 +50,6 @@ public:
 
 
 protected:
-
-	/** The components of the entire app. */
-	ComponentCollection & mComponents;
 
 	/** The timer used for periodicity. */
 	QTimer mTimer;

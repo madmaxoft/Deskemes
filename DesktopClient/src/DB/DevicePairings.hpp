@@ -19,6 +19,8 @@ class DevicePairings:
 	public ComponentCollection::Component<ComponentCollection::ckDevicePairings>
 {
 	using Super = QObject;
+	using ComponentSuper = ComponentCollection::Component<ComponentCollection::ckDevicePairings>;
+
 	Q_OBJECT
 
 public:
@@ -44,7 +46,7 @@ public:
 
 	/** Checks that the DB is in proper format.
 	If the DB is unusable, throws a descriptive RuntimeError. */
-	void start();
+	virtual void start() override;
 
 	/** Looks up the specified device, and returns its pairing data, if available. */
 	Optional<Pairing> lookupDevice(const QByteArray & aDevicePublicID);
@@ -61,10 +63,4 @@ public:
 	/** Generates a new keypair for the specified device and stores it in the DB.
 	Silently ignored if a keypair for the device already exists. */
 	void createLocalKeyPair(const QByteArray & aDevicePublicID, const QString & aFriendlyName);
-
-
-protected:
-
-	/** The components of the entire app. */
-	ComponentCollection & mComponents;
 };

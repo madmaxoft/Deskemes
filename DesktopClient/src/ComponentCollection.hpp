@@ -10,22 +10,26 @@
 
 /** A collection of the base objects, so that they don't need to be pushed around in parameters.
 The collection is built upon app startup and is expected not to change after its initial build.
+Each component receives the ComponentCollection in its constructor, so it can store it for later queries.
+Once all the components are created, they are then started; the order of the starting is specified by
+the components' requests to ComponentCollection::requireForStart().
 
 Usage:
 At app start:
 ComponentCollection cc
-cc.addComponent(...);
+auto db = cc.addNew<Database>(...);
 ...
+cc.start();
 
 In regular operation:
-auto & db = ComponentCollection::get<Database>();
+auto db = ComponentCollection::get<Database>();
 */
 class ComponentCollection
 {
 public:
 
 	/** Specifies the kind of the individual component. */
-	enum EKind
+	enum ComponentKind
 	{
 		ckInstallConfiguration,
 		ckDatabase,
@@ -41,21 +45,39 @@ public:
 
 protected:
 
-	/** An internal base for all components, that keeps track of the component kind. */
+	/** An internal base for all components, that keeps track of the component kind.
+	Needed so that all components can be put into a vector of same-type pointers. */
 	class ComponentBase
 	{
 		friend class ::ComponentCollection;
 	public:
-		ComponentBase(EKind a_Kind):
-			mKind(a_Kind)
+		ComponentBase(ComponentKind aKind, ComponentCollection & aComponents):
+			mKind(aKind),
+			mComponents(aComponents)
 		{
 		}
 
-		virtual ~ComponentBase() {}
+		virtual ~ComponentBase() {}  // Force a virtual destructor in descendants
+
+		/** Descendants may override to implement a specific action needed for starting the component. */
+		virtual void start() {}
+
+		/** Indicates that the aRequiredComponent is needed to start before this component.
+		To be used only during component creation (between ComponentCollection constructor and start() call).
+		Throws an Exception if called after start(). */
+		inline void requireForStart(ComponentKind aRequiredComponent)
+		{
+			mComponents.requireForStart(mKind, aRequiredComponent);
+		}
 
 
 	protected:
-		EKind mKind;
+
+		/** The component's kind, stored in the base so it can be queried from the base pointer. */
+		ComponentKind mKind;
+
+		/** The component collection to which this component belongs. */
+		ComponentCollection & mComponents;
 	};
 
 	using ComponentBasePtr = std::shared_ptr<ComponentBase>;
@@ -64,20 +86,23 @@ protected:
 public:
 
 	/** A base class representing the common functionality in all components in the collection. */
-	template <EKind tKind>
+	template <ComponentKind tKind>
 	class Component:
 		public ComponentBase
 	{
 	public:
-		Component():
-			ComponentBase(tKind)
+		Component(ComponentCollection & aComponents):
+			ComponentBase(tKind, aComponents)
 		{
 		}
 
-		static EKind kind() { return tKind; }
+		static ComponentKind kind() { return tKind; }
 	};
 
 
+
+	/** Creates a new empty collection. */
+	ComponentCollection();
 
 	/** Adds the specified component into the collection.
 	Asserts that a component of the same kind doesn't already exist. */
@@ -94,7 +119,7 @@ public:
 	template <typename ComponentClass, typename... Args>
 	std::shared_ptr<ComponentClass> addNew(Args &&... aArgs)
 	{
-		auto res = std::make_shared<ComponentClass>(std::forward<Args>(aArgs)...);
+		auto res = std::make_shared<ComponentClass>(*this, std::forward<Args>(aArgs)...);
 		if (res == nullptr)
 		{
 			throw RuntimeError("Failed to create component %1", ComponentClass::kind());
@@ -112,19 +137,38 @@ public:
 		return std::dynamic_pointer_cast<ComponentClass>(get(ComponentClass::kind()));
 	}
 
+	/** Starts all the components, in a topological order. */
+	void start();
+
 
 protected:
 
 	/** The collection of all components. */
-	std::map<EKind, ComponentBasePtr> mComponents;
+	std::map<ComponentKind, ComponentBasePtr> mComponents;
+
+	/** The requirements for starting the individual components.
+	Map of ComponentKind (to be started) -> vector of ComponentKind (needs to be already running). */
+	std::map<ComponentKind, std::vector<ComponentKind>> mStartRequirements;
+
+	/** Indicates whether start() has been called. */
+	bool mIsStarted;
 
 
 	/** Adds the specified component into the collection.
 	Asserts that a component of the same kind doesn't already exist.
 	Client code should use the templated version, this is its actual implementation. */
-	void addComponent(EKind aKind, ComponentBasePtr aComponent);
+	void addComponent(ComponentKind aKind, ComponentBasePtr aComponent);
 
 	/** Returns the component of the specified kind, as a base pointer.
 	Clients should use the templated get() instead (which calls this internally). */
-	ComponentBasePtr get(EKind aKind);
+	ComponentBasePtr get(ComponentKind aKind);
+
+	/** Requests that the aRequiredComponent be started before aThisComponent.
+	To be used only during component creation (between ComponentCollection constructor and start() call).
+	Throws an Exception if called after start(). */
+	void requireForStart(ComponentKind aThisComponent, ComponentKind aRequiredComponent);
+
+	/** Returns the mComponents in the order in which they should be started.
+	Throws a LogicError if the start order cannot be constructed (due to cycles). */
+	std::vector<ComponentBasePtr> componentsInStartOrder();
 };

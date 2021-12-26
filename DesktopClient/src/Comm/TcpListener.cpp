@@ -13,7 +13,7 @@
 
 TcpListener::TcpListener(ComponentCollection & aComponents, QObject * aParent):
 	Super(aParent),
-	mComponents(aComponents)
+	ComponentSuper(aComponents)
 {
 	connect(&mServer, &QTcpServer::newConnection, this, &TcpListener::newConnection);
 }

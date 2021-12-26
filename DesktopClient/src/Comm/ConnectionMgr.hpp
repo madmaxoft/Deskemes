@@ -17,14 +17,17 @@
 
 
 /** Manages all connections to the devices that have been established.
-Connections are uniquely identified by their EnumeratorID.
+Connections are uniquely identified by their ConnectionID.
 Receives connections from the TCP, USB and Bluetooth listeners, manages all of them.
 Also supports detection, handles even connections that haven't been paired yet. */
 class ConnectionMgr:
 	public QObject,
 	public ComponentCollection::Component<ComponentCollection::ckConnectionMgr>
 {
+	using ComponentSuper = ComponentCollection::Component<ComponentCollection::ckConnectionMgr>;
+
 	Q_OBJECT
+
 
 public:
 
@@ -59,9 +62,6 @@ public:
 
 protected:
 
-	/** The components of the entire app. */
-	ComponentCollection & mComponents;
-
 	/** All current connections.
 	Protected against multithreaded access by mMtxConnections. */
 	std::vector<std::shared_ptr<Connection>> mConnections;
@@ -94,9 +94,6 @@ signals:
 
 	/** Emitted when a previously fully established connection goes offline. */
 	void lostConnection(ConnectionPtr aConnection);
-
-
-public slots:
 
 
 protected slots:

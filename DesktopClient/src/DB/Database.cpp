@@ -125,8 +125,21 @@ QSqlQuery Database::DBConnection::query(const QString & aQueryString)
 // Database:
 
 Database::Database(ComponentCollection & aComponents):
-	mComponents(aComponents)
+	ComponentSuper(aComponents)
 {
+	requireForStart(ComponentCollection::ckInstallConfiguration);
+}
+
+
+
+
+
+void Database::start()
+{
+	auto instConf = mComponents.get<InstallConfiguration>();
+	auto dbFile = instConf->dbFileName();
+	DatabaseBackup::dailyBackupOnStartup(dbFile, instConf->dbBackupsFolder());
+	open(dbFile);
 }
 
 

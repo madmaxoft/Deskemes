@@ -24,6 +24,8 @@ class TcpListener:
 	public ComponentCollection::Component<ComponentCollection::ckTcpListener>
 {
 	using Super = QObject;
+	using ComponentSuper = ComponentCollection::Component<ComponentCollection::ckTcpListener>;
+
 	Q_OBJECT
 
 
@@ -41,7 +43,7 @@ public:
 	explicit TcpListener(ComponentCollection & aComponents, QObject * aParent = nullptr);
 
 	/** Starts listening on a system-assigned TCP port on all interfaces. */
-	void start();
+	virtual void start() override;
 
 	/** Stops listening. */
 	void stop();
@@ -53,21 +55,12 @@ public:
 
 protected:
 
-	/** The components of the entire app. */
-	ComponentCollection & mComponents;
-
 	/** The TCP server used for listening for connections. */
 	QTcpServer mServer;
 
 
 
-signals:
-
-
-public slots:
-
-
-protected slots:
+protected Q_SLOTS:
 
 	/** Creates a new Connection object for the new connection from the TCP server.
 	Emitted by mServer when a new connection is requested. */

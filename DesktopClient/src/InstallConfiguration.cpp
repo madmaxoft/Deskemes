@@ -23,7 +23,8 @@
 
 
 
-InstallConfiguration::InstallConfiguration():
+InstallConfiguration::InstallConfiguration(ComponentCollection & aComponents):
+	ComponentSuper(aComponents),
 	mDataPath(detectDataPath())
 {
 	qDebug() << "Using data path " << mDataPath;

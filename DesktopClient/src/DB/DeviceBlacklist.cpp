@@ -9,8 +9,9 @@
 
 
 DeviceBlacklist::DeviceBlacklist(ComponentCollection & aComponents):
-	mComponents(aComponents)
+	ComponentSuper(aComponents)
 {
+	requireForStart(ComponentCollection::ckDatabase);
 }
 
 

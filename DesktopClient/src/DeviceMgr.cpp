@@ -1,13 +1,25 @@
 #include "DeviceMgr.hpp"
 #include <QMutexLocker>
+#include "Comm/ConnectionMgr.hpp"
 
 
 
 
 
 DeviceMgr::DeviceMgr(ComponentCollection & aComponents):
-	mComponents(aComponents)
+	ComponentSuper(aComponents)
 {
+	requireForStart(ComponentCollection::ckConnectionMgr);
+}
+
+
+
+
+
+void DeviceMgr::start()
+{
+	auto connMgr = mComponents.get<ConnectionMgr>();
+	connect(connMgr.get(), &ConnectionMgr::newConnection, this, &DeviceMgr::newConnection);
 }
 
 

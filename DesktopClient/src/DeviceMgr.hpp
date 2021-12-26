@@ -17,7 +17,10 @@ class DeviceMgr:
 	public QObject,
 	public ComponentCollection::Component<ComponentCollection::ckDevices>
 {
+	using ComponentSuper = ComponentCollection::Component<ComponentCollection::ckDevices>;
+
 	Q_OBJECT
+
 
 public:
 
@@ -27,6 +30,8 @@ public:
 	};
 
 	DeviceMgr(ComponentCollection & aComponents);
+
+	virtual void start() override;
 
 	/** Adds the specified device to the internal storage.
 	Throws a DeviceAlreadyPresentError if such a device with the same DeviceID already exists. */
@@ -42,9 +47,6 @@ public:
 
 protected:
 
-	/** The components of the entire app. */
-	ComponentCollection & mComponents;
-
 	/** All the devices, indexed by their DeviceID.
 	Protected against multithreaded access by mMtx. */
 	std::map<QByteArray, DevicePtr> mDevices;
@@ -53,7 +55,7 @@ protected:
 	mutable QMutex mMtx;
 
 
-signals:
+Q_SIGNALS:
 
 	/** Emitted after a new device is added to the internal storage. */
 	void deviceAdded(DevicePtr aDevice);
@@ -62,7 +64,7 @@ signals:
 	void deviceRemoved(DevicePtr aDevice);
 
 
-public slots:
+public Q_SLOTS:
 
 	/** Notification from ConnectionMgr, a new connection has reached full connectivity (csEncrypted).
 	Either creates a new device for the connection, or adds the connection to an existing device. */

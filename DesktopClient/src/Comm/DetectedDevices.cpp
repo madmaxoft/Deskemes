@@ -210,3 +210,21 @@ std::vector<DetectedDevices::DevicePtr> DetectedDevices::devices() const
 	QMutexLocker lock(&mtxDevices);
 	return mDevices;  // Returns a copy of mDevices
 }
+
+
+
+
+
+std::vector<DetectedDevices::DevicePtr> DetectedDevices::allEnumeratorDevices(ComponentCollection::ComponentKind aEnumeratorKind) const
+{
+	QMutexLocker lock(&mtxDevices);
+	std::vector<DetectedDevices::DevicePtr> res;
+	for (const auto & dev: mDevices)
+	{
+		if (dev->enumeratorKind() == aEnumeratorKind)
+		{
+			res.push_back(std::move(dev));
+		}
+	}
+	return res;
+}

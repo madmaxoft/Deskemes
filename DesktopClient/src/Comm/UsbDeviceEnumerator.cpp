@@ -14,6 +14,8 @@ UsbDeviceEnumerator::UsbDeviceEnumerator(ComponentCollection & aComponents):
 	ComponentSuper(aComponents)
 {
 	requireForStart(ComponentCollection::ckTcpListener);
+	requireForStart(ComponentCollection::ckDetectedDevices);
+
 	setObjectName("UsbDeviceEnumerator");
 	moveToThread(this);
 }
@@ -205,21 +207,45 @@ void UsbDeviceEnumerator::updateDeviceList(
 	const QList<QByteArray> & aOtherIDs
 )
 {
-	DetectedDevices::DeviceStatusList dsl;
-	for (const auto & id: aOnlineIDs)
+	auto dd = mComponents.get<DetectedDevices>();
+	auto devs = dd->allEnumeratorDevices(mKind);
+
+	// Set devices no longer tracked as offline:
+	for (const auto & dev: devs)
 	{
-		dsl.push_back({id, DetectedDevices::Device::dsOnline});
+		const auto & id = dev->enumeratorDeviceID();
+		if (
+			!aOnlineIDs.contains(id) &&
+			!aUnauthIDs.contains(id) &&
+			!aOtherIDs.contains(id)
+		)
+		{
+			dd->setDeviceStatus(mKind, id, DetectedDevices::Device::dsOffline);
+		}
 	}
+
+	// Set all unauth devices as dsUnauthorized:
 	for (const auto & id: aUnauthIDs)
 	{
-		dsl.push_back({id, DetectedDevices::Device::dsUnauthorized});
+		dd->setDeviceStatus(mKind, id, DetectedDevices::Device::dsUnauthorized);
 	}
+
+	// Set all other devices as dsOffline:
 	for (const auto & id: aOtherIDs)
 	{
-		dsl.push_back({id, DetectedDevices::Device::dsOffline});
+		dd->setDeviceStatus(mKind, id, DetectedDevices::Device::dsOffline);
 	}
-	auto dd = mComponents.get<DetectedDevices>();
-	dd->updateEnumeratorDeviceList(ComponentCollection::ckUsbDeviceEnumerator, dsl);
+
+	// Online apps need to check the app presence to determine their status:
+	for (const auto & id: aOnlineIDs)
+	{
+		auto adbComm = new AdbCommunicator(this);
+		connect(adbComm, &AdbCommunicator::connected,      this,    [=](){ adbComm->assignDevice(id); });
+		connect(adbComm, &AdbCommunicator::deviceAssigned, adbComm, &AdbCommunicator::queryAppPresence);
+		connect(adbComm, &AdbCommunicator::appPresent,     this,    &UsbDeviceEnumerator::tryStartApp(id));
+		connect(adbComm, &AdbCommunicator::appNotPresent,  this,    [=](){ dd->setDeviceStatus(mKind, id, DetectedDevices::Device::dsNeedApp); });
+		connect(adbComm, &AdbCommunicator::disconnected,   adbComm, &QObject::deleteLater);
+	}
 }
 
 

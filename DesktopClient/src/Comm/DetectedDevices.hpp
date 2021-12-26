@@ -121,8 +121,11 @@ public:
 	All items in aNewDeviceList are either added or their status changed, appropriately. */
 	void updateEnumeratorDeviceList(ComponentCollection::ComponentKind aEnumeratorKind, const DeviceStatusList & aNewDeviceList);
 
-	/** Returns (a copy of) all the devices currently tracked. */
+	/** Returns all the devices currently tracked (a copy of mDevices). */
 	std::vector<DevicePtr> devices() const;
+
+	/** Returns all of the devices currently tracked by the specified enumerator. */
+	std::vector<DevicePtr> allEnumeratorDevices(ComponentCollection::ComponentKind aEnumeratorKind) const;
 
 
 Q_SIGNALS:

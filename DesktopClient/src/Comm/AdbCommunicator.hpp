@@ -51,6 +51,11 @@ public slots:
 	Once the switch is confirmed by the ADB server, the deviceAssigned() signal is emitted. */
 	void assignDevice(const QByteArray & aDeviceID);
 
+	/** Queries the app presence on the specified device.
+	Sends a shell command to the "pm" on the device and listens for the response.
+	Causes either the appPresent() or appNotPresent() signal to be emitted. */
+	void queryAppPresence(const QByteArray & aDeviceID);
+
 	/** Instructs the device to send a screenshot.
 	Needs a device assigned first. Multiple successive screenshots can be requested using one object instance.
 	Once the screenshot is received, the screenshotReceived() signal is emitted.
@@ -79,7 +84,7 @@ public slots:
 	static QByteArray getAdbPubKey();
 
 
-signals:
+Q_SIGNALS:
 
 	/** Emitted once the socket conntects to the ADB server port. */
 	void connected();
@@ -114,6 +119,12 @@ signals:
 	May be emitted multiple times when more data is received. */
 	void shellIncomingData(const QByteArray & aDeviceID, const QByteArray & aStdOutOrErr);
 
+	/** Emitted after using queryAppPresence() if the app is detected. */
+	void appPresent(const QByteArray & aDeviceID);
+
+	/** Emitted after using queryAppPresence() if the app is NOT detected. */
+	void appNotPresent(const QByteArray & aDeviceID);
+
 
 protected:
 
@@ -138,6 +149,8 @@ protected:
 		csScreenshotting,       ///< after takeScreenshot() has been called, waiting for the framebuffer contents.
 
 		csPortReversing,  ///< after portReverse() has been called
+
+		csAppPresenceQuery,  ///< after queryAppPresence, waiting for the response.
 
 		csExecutingShellV1,  ///< after shellExecuteV1() has been called, executing a shell command and relaying stdout + stderr
 	};
@@ -183,7 +196,7 @@ protected:
 	void processScreenshot();
 
 
-protected slots:
+protected Q_SLOTS:
 
 	/** Emitted by mSocket when it succeeds connecting. */
 	void onSocketConnected();

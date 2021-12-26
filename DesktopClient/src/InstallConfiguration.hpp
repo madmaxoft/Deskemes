@@ -16,11 +16,14 @@
 class InstallConfiguration:
 	public ComponentCollection::Component<ComponentCollection::ckInstallConfiguration>
 {
+	using ComponentSuper = ComponentCollection::Component<ComponentCollection::ckInstallConfiguration>;
+
+
 public:
 
 	/** Initializes the paths.
 	Throws a RuntimeError if no suitable path was found. */
-	InstallConfiguration();
+	InstallConfiguration(ComponentCollection & aComponents);
 
 	/** Returns the path where the specified file (with writable data) / folder should be stored. */
 	QString dataLocation(const QString & aFileName) const { return mDataPath + aFileName; }

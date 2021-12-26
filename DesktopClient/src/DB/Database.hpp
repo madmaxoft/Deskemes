@@ -21,6 +21,7 @@ class Database:
 {
 	Q_OBJECT
 	using Super = QObject;
+	using ComponentSuper = ComponentCollection::Component<ComponentCollection::ckDatabase>;
 
 
 public:
@@ -65,6 +66,8 @@ public:
 
 	Database(ComponentCollection & aComponents);
 
+	virtual void start() override;
+
 	/** Opens the specified SQLite file to provide the data backstore.
 	Only one DB can ever be open.
 	TODO: Encryption support. */
@@ -80,9 +83,6 @@ protected:
 
 	friend class DatabaseUpgrade;
 
-
-	/** The components of the entire program. */
-	ComponentCollection & mComponents;
 
 	/** The DB connection .*/
 	QSqlDatabase mDatabase;

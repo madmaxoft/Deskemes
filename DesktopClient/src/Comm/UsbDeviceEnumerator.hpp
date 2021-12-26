@@ -29,7 +29,11 @@ class UsbDeviceEnumerator:
 	public QThread,
 	public ComponentCollection::Component<ComponentCollection::ckUsbDeviceEnumerator>
 {
+	using Super = QThread;
+	using ComponentSuper = ComponentCollection::Component<ComponentCollection::ckUsbDeviceEnumerator>;
+
 	Q_OBJECT
+
 
 public:
 
@@ -41,15 +45,11 @@ public:
 
 	const DetectedDevices & detectedDevices() const { return mDetectedDevices; }
 
-	/** Starts the enumerator.
-	Devices are instructed to connect to the specified TCP port. */
-	void start(quint16 aTcpListenerPort);
+	/** Starts the enumerator. */
+	virtual void start() override;
 
 
 protected:
-
-	/** The components of the entire app. */
-	ComponentCollection & mComponents;
 
 	/** The storage for the detected devices. */
 	DetectedDevices mDetectedDevices;

@@ -7,9 +7,9 @@
 
 
 ConnectionMgr::ConnectionMgr(ComponentCollection & aComponents):
-	mComponents(aComponents)
+	ComponentSuper(aComponents)
 {
-
+	requireForStart(ComponentCollection::ckDatabase);
 }
 
 

@@ -108,36 +108,25 @@ int main(int argc, char *argv[])
 		qRegisterMetaType<DetectedDevices::DeviceStatusList>();
 		qRegisterMetaType<Connection *>();
 		qRegisterMetaType<ConnectionPtr>();
-		auto instConf = std::make_shared<InstallConfiguration>();
+		ComponentCollection cc;
+		auto instConf = std::make_shared<InstallConfiguration>(cc);
 		Settings::init(instConf->dataLocation("Deskemes.ini"));
 		instConf->loadFromSettings();
 
 		// Create the main app objects:
-		ComponentCollection cc;
 		cc.addComponent(instConf);
-		auto mainDB        = cc.addNew<Database>(cc);
-		auto devMgr        = cc.addNew<DeviceMgr>(cc);
-		auto connMgr       = cc.addNew<ConnectionMgr>(cc);
-		auto broadcaster   = cc.addNew<UdpBroadcaster>(cc);
-		auto listener      = cc.addNew<TcpListener>(cc);
-		auto pairings      = cc.addNew<DevicePairings>(cc);
-		auto blacklist     = cc.addNew<DeviceBlacklist>(cc);
-		auto usbEnumerator = cc.addNew<UsbDeviceEnumerator>(cc);
+		auto mainDB          = cc.addNew<Database>();
+		auto devMgr          = cc.addNew<DeviceMgr>();
+		auto connMgr         = cc.addNew<ConnectionMgr>();
+		auto broadcaster     = cc.addNew<UdpBroadcaster>();
+		auto listener        = cc.addNew<TcpListener>();
+		auto pairings        = cc.addNew<DevicePairings>();
+		auto blacklist       = cc.addNew<DeviceBlacklist>();
+		auto usbEnumerator   = cc.addNew<UsbDeviceEnumerator>();
+		auto detectedDevices = cc.addNew<DetectedDevices>();
 
-		// Connect the main objects together:
-		app.connect(connMgr.get(), &ConnectionMgr::newConnection, devMgr.get(), &DeviceMgr::newConnection);
-
-		// Load the DB:
-		auto dbFile = instConf->dbFileName();
-		DatabaseBackup::dailyBackupOnStartup(dbFile, instConf->dbBackupsFolder());
-		mainDB->open(dbFile);
-
-		// Start the background services:
-		pairings->start();
-		blacklist->start();
-		listener->start();
-		broadcaster->start();
-		usbEnumerator->start(listener->listeningPort());
+		// Start the components:
+		cc.start();
 
 		// Show the UI:
 		WndDevices w(cc);

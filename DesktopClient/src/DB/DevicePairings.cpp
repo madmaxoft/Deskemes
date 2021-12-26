@@ -12,8 +12,9 @@
 
 
 DevicePairings::DevicePairings(ComponentCollection & aComponents):
-	mComponents(aComponents)
+	ComponentSuper(aComponents)
 {
+	requireForStart(ComponentCollection::ckDatabase);
 }
 
 

@@ -12,7 +12,7 @@
 
 UdpBroadcaster::UdpBroadcaster(ComponentCollection & aComponents, QObject * aParent):
 	Super(aParent),
-	mComponents(aComponents),
+	ComponentSuper(aComponents),
 	mPrimaryPort(0),
 	mAltPort(0),
 	mIsDiscovery(false)

@@ -16,7 +16,10 @@ class DeviceBlacklist:
 	public QObject,
 	public ComponentCollection::Component<ComponentCollection::ckDeviceBlacklist>
 {
+	using ComponentSuper = ComponentCollection::Component<ComponentCollection::ckDeviceBlacklist>;
+
 	Q_OBJECT
+
 
 public:
 
@@ -24,14 +27,8 @@ public:
 
 	/** Checks that the DB is in proper format.
 	If the DB is unusable, throws a descriptive RuntimeError. */
-	void start();
+	virtual void start() override;
 
 	/** Returns true if the specified device is blacklisted. */
 	bool isBlacklisted(const QByteArray & aDeviceID);
-
-
-protected:
-
-	/** The components of the entire app. */
-	ComponentCollection & mComponents;
 };

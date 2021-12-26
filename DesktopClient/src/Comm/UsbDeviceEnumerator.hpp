@@ -78,17 +78,17 @@ protected:
 	void startConnectionByIntent(const QByteArray & aDeviceID);
 
 
-public slots:
+public Q_SLOTS:
 
 	/** Requests a new screenshot from the specified device.
 	Relays the request onto this object's thread by invoking invRequestDeviceScreenshot(). */
 	void requestDeviceScreenshot(const QByteArray & aDevice);
 
 
-protected slots:
+protected Q_SLOTS:
 
 	/** Updates the internal list of devices based on the given IDs.
-	Called from the mAdbDevList when the device list changes. */
+	Called from the run::adbDevList when the device list changes. */
 	void updateDeviceList(
 		const QList<QByteArray> & aOnlineIDs,
 		const QList<QByteArray> & aUnauthIDs,

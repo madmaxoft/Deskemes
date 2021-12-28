@@ -53,7 +53,8 @@ void UsbDeviceEnumerator::run()
 	QProcess::execute("adb", {"devices"});
 
 	// Set up the device tracking:
-	auto adbDevList = std::make_unique<AdbCommunicator>(this);
+	auto adbDevList = std::make_unique<AdbCommunicator>();
+	adbDevList->moveToThread(this);
 	connect(adbDevList.get(), &AdbCommunicator::connected,        adbDevList.get(), &AdbCommunicator::trackDevices);
 	connect(adbDevList.get(), &AdbCommunicator::updateDeviceList, this,             &UsbDeviceEnumerator::updateDeviceList);
 	adbDevList->start();
@@ -62,7 +63,8 @@ void UsbDeviceEnumerator::run()
 	QTimer timer;
 	connect(&timer, &QTimer::timeout, this, [=]()
 		{
-			auto adbDevLister = new AdbCommunicator(this);
+			auto adbDevLister = new AdbCommunicator;
+			adbDevLister->moveToThread(this);
 			connect(adbDevLister, &AdbCommunicator::updateDeviceList, this,         &UsbDeviceEnumerator::updateDeviceList);
 			connect(adbDevLister, &AdbCommunicator::connected,        adbDevLister, [=](){adbDevLister->listDevices();});
 			connect(adbDevLister, &AdbCommunicator::disconnected,     adbDevLister, &QObject::deleteLater);
@@ -73,6 +75,7 @@ void UsbDeviceEnumerator::run()
 
 	exec();
 
+	timer.stop();
 	adbDevList.reset();
 }
 

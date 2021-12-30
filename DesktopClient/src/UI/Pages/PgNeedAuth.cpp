@@ -64,6 +64,10 @@ int PgNeedAuth::nextId() const
 		case DetectedDevices::Device::dsOnline:       return NewDeviceWizard::pgSucceeded;
 		case DetectedDevices::Device::dsUnauthorized: return NewDeviceWizard::pgNeedAuth;
 	}
+	#ifdef _MSC_VER
+		assert(!"Unknown device status");
+		throw LogicError("Unknown device status: %1", mParent.device()->status());
+	#endif
 }
 
 

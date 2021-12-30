@@ -82,6 +82,10 @@ int PgDeviceList::nextId() const
 		case DetectedDevices::Device::dsOffline:      return NewDeviceWizard::pgFailed;
 		case DetectedDevices::Device::dsNeedApp:      return NewDeviceWizard::pgNeedApp;
 	}
+	#ifdef _MSC_VER
+		assert(!"Unknown device status");
+		throw LogicError("Unknown device status: %1", sel->status());
+	#endif
 }
 
 

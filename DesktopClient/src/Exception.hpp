@@ -1,5 +1,7 @@
 #pragma once
 
+#include <stdexcept>
+
 #include <QString>
 #include <QDebug>
 

@@ -463,6 +463,10 @@ ComponentCollection::ComponentKind Connection::enumeratorKindFromTransportKind(C
 		case tkTcp: return ComponentCollection::ckTcpListener;
 		case tkBluetooth: return ComponentCollection::ckBluetoothDeviceEnumerator;
 	}
+	#ifdef _MSC_VER
+		assert(!"Invalid transport kind");
+		throw LogicError("Invalid transport kind: %1", aTransportKind);
+	#endif
 }
 
 

@@ -41,28 +41,28 @@ DetectedDevices::DetectedDevices(ComponentCollection & aComponents):
 void DetectedDevices::addDevice(ComponentCollection::ComponentKind aEnumeratorKind, const QByteArray & aEnumeratorDeviceID, DetectedDevices::Device::Status aStatus)
 {
 	QMutexLocker lock(&mtxDevices);
-	qDebug() << "Adding device " << aEnumeratorDeviceID;
+	qDebug() << "Adding device " << aEnumeratorDeviceID << ", status " << aStatus;
 
-	// If the device is already present, only update status:
-	for (auto & dev: mDevices)
+	// If the device is already present (no matter what enumerator from), only update status:
+	for (auto & devEntry: mDevices)
 	{
-		if (dev->enumeratorDeviceID() != aEnumeratorDeviceID)
+		if (devEntry.first.second != aEnumeratorDeviceID)
 		{
 			continue;
 		}
-		if (dev->status() == aStatus)
+		if (devEntry.second->status() == aStatus)
 		{
 			return;
 		}
-		dev->setStatus(aStatus);
+		devEntry.second->setStatus(aStatus);
 		lock.unlock();
-		emit deviceStatusChanged(dev);
+		emit deviceStatusChanged(devEntry.second);
 		return;
 	}
 
 	// Device not found, create a new one:
 	auto dev = std::make_shared<Device>(aEnumeratorKind, aEnumeratorDeviceID, aStatus);
-	mDevices.push_back(dev);
+	mDevices[{aEnumeratorKind, aEnumeratorDeviceID}] = dev;
 	lock.unlock();
 	emit deviceAdded(dev);
 }
@@ -76,15 +76,14 @@ void DetectedDevices::delDevice(const QByteArray & aEnumeratorDeviceID)
 	QMutexLocker lock(&mtxDevices);
 	qDebug() << "Removing device " << aEnumeratorDeviceID;
 
-	int row = -1;
-	for (auto & dev: mDevices)
+	for (auto itr = mDevices.begin(), end = mDevices.end(); itr != end; ++itr)
 	{
-		row += 1;
-		if (dev->enumeratorDeviceID() != aEnumeratorDeviceID)
+		if (itr->first.second != aEnumeratorDeviceID)
 		{
 			continue;
 		}
-		mDevices.erase(mDevices.begin() + row);
+		auto dev = itr->second;
+		mDevices.erase(itr);
 		lock.unlock();
 		emit deviceRemoved(dev);
 		return;
@@ -113,15 +112,15 @@ void DetectedDevices::setDeviceStatus(
 void DetectedDevices::setDeviceName(const QByteArray & aEnumeratorDeviceID, const QString & aName)
 {
 	QMutexLocker lock(&mtxDevices);
-	for (auto & dev: mDevices)
+	for (auto & devEntry: mDevices)
 	{
-		if (dev->enumeratorDeviceID() != aEnumeratorDeviceID)
+		if (devEntry.first.second != aEnumeratorDeviceID)
 		{
 			continue;
 		}
-		dev->setName(aName);
+		devEntry.second->setName(aName);
 		lock.unlock();
-		emit deviceNameChanged(dev);
+		emit deviceNameChanged(devEntry.second);
 		return;
 	}
 
@@ -135,15 +134,15 @@ void DetectedDevices::setDeviceName(const QByteArray & aEnumeratorDeviceID, cons
 void DetectedDevices::setDeviceAvatar(const QByteArray & aEnumeratorDeviceID, const QImage & aAvatar)
 {
 	QMutexLocker lock(&mtxDevices);
-	for (auto & dev: mDevices)
+	for (auto & devEntry: mDevices)
 	{
-		if (dev->enumeratorDeviceID() != aEnumeratorDeviceID)
+		if (devEntry.first.second != aEnumeratorDeviceID)
 		{
 			continue;
 		}
-		dev->setAvatar(aAvatar);
+		devEntry.second->setAvatar(aAvatar);
 		lock.unlock();
-		emit deviceAvatarChanged(dev);
+		emit deviceAvatarChanged(devEntry.second);
 		return;
 	}
 
@@ -178,11 +177,11 @@ void DetectedDevices::updateEnumeratorDeviceList(
 
 	// Remove all devices no longer known:
 	std::set<QByteArray> devicesToRemove;
-	for (const auto & dev: mDevices)
+	for (const auto & devEntry: mDevices)
 	{
-		if (dev->enumeratorKind() == aEnumeratorKind)
+		if (devEntry.first.first == aEnumeratorKind)
 		{
-			devicesToRemove.insert(dev->enumeratorDeviceID());
+			devicesToRemove.insert(devEntry.first.second);
 		}
 	}
 	for (const auto & nd: aNewDeviceList)
@@ -205,7 +204,7 @@ void DetectedDevices::updateEnumeratorDeviceList(
 
 
 
-std::vector<DetectedDevices::DevicePtr> DetectedDevices::devices() const
+DetectedDevices::DevicePtrMap DetectedDevices::devices() const
 {
 	QMutexLocker lock(&mtxDevices);
 	return mDevices;  // Returns a copy of mDevices
@@ -215,15 +214,15 @@ std::vector<DetectedDevices::DevicePtr> DetectedDevices::devices() const
 
 
 
-std::vector<DetectedDevices::DevicePtr> DetectedDevices::allEnumeratorDevices(ComponentCollection::ComponentKind aEnumeratorKind) const
+std::map<QByteArray, DetectedDevices::DevicePtr> DetectedDevices::allEnumeratorDevices(ComponentCollection::ComponentKind aEnumeratorKind) const
 {
 	QMutexLocker lock(&mtxDevices);
-	std::vector<DetectedDevices::DevicePtr> res;
-	for (const auto & dev: mDevices)
+	std::map<QByteArray, DetectedDevices::DevicePtr> res;
+	for (const auto & devEntry: mDevices)
 	{
-		if (dev->enumeratorKind() == aEnumeratorKind)
+		if (devEntry.first.first == aEnumeratorKind)
 		{
-			res.push_back(std::move(dev));
+			res[devEntry.first.second] = devEntry.second;
 		}
 	}
 	return res;

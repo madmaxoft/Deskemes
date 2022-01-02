@@ -81,6 +81,7 @@ int PgDeviceList::nextId() const
 		case DetectedDevices::Device::dsBlacklisted:  return NewDeviceWizard::pgBlacklisted;
 		case DetectedDevices::Device::dsOffline:      return NewDeviceWizard::pgFailed;
 		case DetectedDevices::Device::dsNeedApp:      return NewDeviceWizard::pgNeedApp;
+		case DetectedDevices::Device::dsFailed:       return NewDeviceWizard::pgFailed;
 	}
 	#ifdef _MSC_VER
 		assert(!"Unknown device status");

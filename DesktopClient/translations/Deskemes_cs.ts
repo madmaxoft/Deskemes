@@ -8,11 +8,11 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Error on the underlying TCP socket</source>
+        <source>Malformed response received from ADB server</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Malformed response received from ADB server</source>
+        <source>Error on the underlying TCP socket: %1</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -94,6 +94,10 @@
     </message>
     <message>
         <source>Avatar</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Connection failed</source>
         <translation type="unfinished"></translation>
     </message>
 </context>

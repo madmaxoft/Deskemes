@@ -49,8 +49,26 @@ public:
 
 protected:
 
+	/** Temporary data needed while detection is in progress on a device. */
+	struct DetectionStatus
+	{
+		/** Shell output of the package query ("pm list packages cz.xoft.deskemes").
+		Used to detect whether the app is present, in tryStartApp(). */
+		QByteArray mAppPackageQueryOutput;
+
+		/** Shell output of the service start command ("am startservice ...").
+		Used to detect whether the service was started successfully. */
+		QByteArray mStartServiceOutput;
+	};
+
+
 	/** The TCP port to which the traffic from the devices is redirected using ADB port-forwaring. */
 	quint16 mTcpListenerPort;
+
+	/** The temporary data needed for each device while detection is in progress on it.
+	Map of DeviceID -> Status.
+	To be accessed only from this object's thread. */
+	std::map<QByteArray, DetectionStatus> mDetectionStatus;
 
 
 	// QThread overrides:
@@ -60,17 +78,21 @@ protected:
 	Guaranteed to be called from this object's thread. */
 	Q_INVOKABLE void invRequestDeviceScreenshot(const QByteArray & aDeviceID);
 
-	/** Tries to set up port-reversing on the device, then calls startConnectionByIntent().
-	Called from mDetectedDevices when a new device is added to the list. */
-	void setupPortReversing(const QByteArray & aDeviceID);
+	/** Asynchronously tries to start the app and connect to it.
+	First checks if the app is installed ("pm list packages"); if not, sets the device as dsNeedApp and finishes.
+	Then it sets up the port reversing through ADB.
+	Then it tries to start the app and make it connect both via USB and TCP. If all succeeds, sets the device as dsOnline. */
+	void tryStartApp(const QByteArray & aDeviceID);
 
-	/** Tries to make app initiate a connection to us by sending a InitiateConnectionServiec intent for all our IPs.
-	Called from mDetectedDevices when a new device is added to the list or becomes online. */
-	void initiateConnectionViaAdb(const QByteArray & aDeviceID);
+	/** Tries to set up port-reversing on the device, then calls startConnectionByIntent(). */
+	void setupPortReversingAndConnect(const QByteArray & aDeviceID);
 
-	/** Tries to start up the on-device app by invoking the LocalConnectService using an intent.
-	This will "ping" the app to connect to the local port, previously port-reversed through ADB to local computer. */
-	void startConnectionByIntent(const QByteArray & aDeviceID);
+	/** Tries to start up the on-device app and make it connect both through USB and TCP.
+	USB connection is attempted by invoking the LocalConnectService using an intent.
+	TCP connection is attempted by invoking the InitiateConnectionService intent for all our IPs.
+	This will "ping" the app to connect to the local port, previously port-reversed through ADB to local computer.
+	Updates the device state in DetectedDeviecs based on the result (dsNeedApp / dsOnline) */
+	void startConnectionToApp(const QByteArray & aDeviceID);
 
 
 public Q_SLOTS:

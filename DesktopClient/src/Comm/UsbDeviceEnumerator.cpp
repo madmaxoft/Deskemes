@@ -98,11 +98,13 @@ void UsbDeviceEnumerator::requestDeviceScreenshot(const QByteArray & aDeviceID)
 
 void UsbDeviceEnumerator::invRequestDeviceScreenshot(const QByteArray & aDeviceID)
 {
-	auto adbScreenshotter = new AdbCommunicator(this);
+	qDebug() << "Requesting screenshot from device " << aDeviceID;
+	auto adbScreenshotter = new AdbCommunicator();
+	adbScreenshotter->moveToThread(this);
 	auto devID = aDeviceID;
-	connect(adbScreenshotter, &AdbCommunicator::connected,          [=](){adbScreenshotter->assignDevice(devID);});
-	connect(adbScreenshotter, &AdbCommunicator::deviceAssigned,     [=](){adbScreenshotter->takeScreenshot();});
-	connect(adbScreenshotter, &AdbCommunicator::screenshotReceived, this, &UsbDeviceEnumerator::updateDeviceLastScreenshot);
+	connect(adbScreenshotter, &AdbCommunicator::connected,          adbScreenshotter, [=](){adbScreenshotter->assignDevice(devID);});
+	connect(adbScreenshotter, &AdbCommunicator::deviceAssigned,     adbScreenshotter, [=](){adbScreenshotter->takeScreenshot();});
+	connect(adbScreenshotter, &AdbCommunicator::screenshotReceived, this,             &UsbDeviceEnumerator::updateDeviceLastScreenshot);
 	connect(adbScreenshotter, &AdbCommunicator::disconnected,       adbScreenshotter, &QObject::deleteLater);
 	adbScreenshotter->start();
 }
@@ -111,15 +113,89 @@ void UsbDeviceEnumerator::invRequestDeviceScreenshot(const QByteArray & aDeviceI
 
 
 
-void UsbDeviceEnumerator::setupPortReversing(const QByteArray & aDeviceID)
+void UsbDeviceEnumerator::tryStartApp(const QByteArray & aDeviceID)
+{
+	// If detection is already running on the device, bail out:
+	auto itr = mDetectionStatus.find(aDeviceID);
+	if (itr != mDetectionStatus.cend())
+	{
+		return;
+	}
+
+	qDebug() << "Attempting to start the app on device " << aDeviceID;
+	mDetectionStatus[aDeviceID];
+
+	auto shellCmd = QString::fromUtf8("pm list packages cz.xoft.deskemes");
+	auto devID = aDeviceID;
+	auto appQuery = new AdbCommunicator();
+	appQuery->moveToThread(this);
+	connect(appQuery, &AdbCommunicator::connected,         this, [=](){appQuery->assignDevice(devID);});
+	connect(appQuery, &AdbCommunicator::deviceAssigned,    this, [=](){appQuery->shellExecuteV1(shellCmd.toUtf8());});
+	connect(appQuery, &AdbCommunicator::shellIncomingData, this,
+		[this](const QByteArray & aDeviceID, const QByteArray & aShellOutOrErr)
+		{
+			mDetectionStatus[aDeviceID].mAppPackageQueryOutput.append(aShellOutOrErr);
+		}
+	);
+	connect(appQuery, &AdbCommunicator::error, this,
+		[this, devID](const QString & aErrorText)
+		{
+			qDebug() << "Error while checking for app: " << aErrorText;
+			auto itr = mDetectionStatus.find(devID);
+			if (itr != mDetectionStatus.end())
+			{
+				mDetectionStatus.erase(itr);
+			}
+		}
+	);
+	connect(appQuery, &AdbCommunicator::disconnected, this,
+		[this, devID, appQuery]()
+		{
+			appQuery->deleteLater();
+			auto itr = mDetectionStatus.find(devID);
+			bool hasApp = false;
+			if (itr != mDetectionStatus.end())
+			{
+				hasApp = itr->second.mAppPackageQueryOutput.contains("cz.xoft.deskemes");
+			}
+			if (hasApp)
+			{
+				setupPortReversingAndConnect(devID);
+			}
+			else
+			{
+				qDebug() << "Device " << devID << " doesn't have the app installed.";
+				auto dd = mComponents.get<DetectedDevices>();
+				dd->setDeviceStatus(mKind, devID, DetectedDevices::Device::dsNeedApp);
+				mDetectionStatus.erase(itr);
+			}
+		}
+	);
+
+	appQuery->start();
+}
+
+
+
+
+
+void UsbDeviceEnumerator::setupPortReversingAndConnect(const QByteArray & aDeviceID)
 {
 	qDebug() << "Requesting port-reversing on device " << aDeviceID;
-	auto adbReverser = new AdbCommunicator(this);
+	auto adbReverser = new AdbCommunicator();
+	adbReverser->moveToThread(this);
 	auto devID = aDeviceID;
-	connect(adbReverser, &AdbCommunicator::connected,      this, [=](){adbReverser->assignDevice(devID);});
-	connect(adbReverser, &AdbCommunicator::deviceAssigned, this, [=](){adbReverser->portReverse(mTcpListenerPort, mTcpListenerPort);});
-	connect(adbReverser, &AdbCommunicator::portReversingEstablished, this, &UsbDeviceEnumerator::startConnectionByIntent);
-	connect(adbReverser, &AdbCommunicator::disconnected,   adbReverser, &QObject::deleteLater);
+	connect(adbReverser, &AdbCommunicator::connected,                this,        [=](){adbReverser->assignDevice(devID);});
+	connect(adbReverser, &AdbCommunicator::deviceAssigned,           this,        [=](){adbReverser->portReverse(mTcpListenerPort, mTcpListenerPort);});
+	connect(adbReverser, &AdbCommunicator::portReversingEstablished, this,        &UsbDeviceEnumerator::startConnectionToApp);
+	connect(adbReverser, &AdbCommunicator::disconnected,             adbReverser, &QObject::deleteLater);
+	connect(adbReverser, &AdbCommunicator::error,                    this,
+		[=](QString aErrorText)
+		{
+			qDebug() << "Port reversing setup on device " << devID << " failed: " << aErrorText;
+			mComponents.get<DetectedDevices>()->setDeviceStatus(mKind, devID, DetectedDevices::Device::dsFailed);
+		}
+	);
 	adbReverser->start();
 }
 
@@ -127,15 +203,12 @@ void UsbDeviceEnumerator::setupPortReversing(const QByteArray & aDeviceID)
 
 
 
-void UsbDeviceEnumerator::initiateConnectionViaAdb(const QByteArray & aDeviceID)
+void UsbDeviceEnumerator::startConnectionToApp(const QByteArray & aDeviceID)
 {
-	qDebug() << "Initiating connection via ADB on device " << aDeviceID;
-	auto adbStarter = new AdbCommunicator(this);
-	auto devID = aDeviceID;
-	auto shellCmd = QString::fromUtf8("am startservice -n cz.xoft.deskemes/.InitiateConnectionService --ei Port %1 --es Addresses \"").arg(mTcpListenerPort);
+	qDebug() << "Attempting to start the connection from the app on device " << aDeviceID;
 
-	// Append all our IPs that are not loopback:
-	bool hasAddr = false;
+	// Build the shell commandline with all our IPs that are not loopback:
+	auto shellCmd = QString::fromUtf8("am startservice -n cz.xoft.deskemes/.InitiateConnectionService --ei LocalPort %1 --ei Port %1 --es Addresses \"").arg(mTcpListenerPort);
 	for (const auto & address: QNetworkInterface::allAddresses())
 	{
 		if (
@@ -149,54 +222,48 @@ void UsbDeviceEnumerator::initiateConnectionViaAdb(const QByteArray & aDeviceID)
 			auto addrCopy = address;
 			addrCopy.setScopeId(QString());
 			shellCmd += QString::fromUtf8(" %1").arg(addrCopy.toString());
-			hasAddr = true;
 		}
-	}
-	if (!hasAddr)
-	{
-		qDebug() << "No suitable local addresses found, cannot initiate connection.";
-		adbStarter->deleteLater();
-		return;
 	}
 	shellCmd += "\"";
 
-	// Hand everything over to ADB:
-	connect(adbStarter, &AdbCommunicator::connected,      [=](){adbStarter->assignDevice(devID);});
-	connect(adbStarter, &AdbCommunicator::deviceAssigned, [=](){adbStarter->shellExecuteV1(shellCmd.toUtf8());});
-	connect(adbStarter, &AdbCommunicator::disconnected,   adbStarter, &QObject::deleteLater);
-	adbStarter->start();
-}
-
-
-
-
-
-void UsbDeviceEnumerator::startConnectionByIntent(const QByteArray & aDeviceID)
-{
-	qDebug() << "Attempting to start the connection from the app on device " << aDeviceID;
-	auto appStarter = new AdbCommunicator(this);
-	// auto shellCmd = QString::fromUtf8("am startservice -n cz.xoft.deskemes/.LocalConnectService --ei LocalPort %1 >/dev/null").arg(mTcpListenerPort);
-	auto shellCmd = QString::fromUtf8("am startservice -n cz.xoft.deskemes/.LocalConnectService --ei LocalPort %1").arg(mTcpListenerPort);
 	auto devID = aDeviceID;
-	std::string shellOutput;
-	connect(appStarter, &AdbCommunicator::connected,      [=](){appStarter->assignDevice(devID);});
-	connect(appStarter, &AdbCommunicator::deviceAssigned, [=](){appStarter->shellExecuteV1(shellCmd.toUtf8());});
-	connect(appStarter, &AdbCommunicator::shellIncomingData,
-		[](const QByteArray & aDeviceID, const QByteArray & aShellOutOrErr)
+	auto appStarter = new AdbCommunicator();
+	appStarter->moveToThread(this);
+	connect(appStarter, &AdbCommunicator::connected,      this, [=](){appStarter->assignDevice(devID);});
+	connect(appStarter, &AdbCommunicator::deviceAssigned, this, [=](){appStarter->shellExecuteV1(shellCmd.toUtf8());});
+	connect(appStarter, &AdbCommunicator::disconnected,   appStarter, &QObject::deleteLater);
+	connect(appStarter, &AdbCommunicator::shellIncomingData, this,
+		[=](const QByteArray & aDeviceID, const QByteArray & aShellOutOrErr)
 		{
-			if (!aShellOutOrErr.isEmpty())
+			mDetectionStatus[aDeviceID].mStartServiceOutput.append(aShellOutOrErr);
+		}
+	);
+	connect(appStarter, &AdbCommunicator::disconnected, this,
+		[=]()
+		{
+			appStarter->deleteLater();
+			auto shellOutput = std::move(mDetectionStatus[devID].mStartServiceOutput);
+			mDetectionStatus.erase(aDeviceID);
+			if (shellOutput.isEmpty())
 			{
-				qDebug() << "Connection intent failed to start on device " << aDeviceID << ", message: " << aShellOutOrErr;
+				// There was no error message, assume the service was started
+				// The device should connect via regular TCP now
+				// TODO: What if the device still needs pairing?
+				mComponents.get<DetectedDevices>()->setDeviceStatus(mKind, devID, DetectedDevices::Device::dsOnline);
+			}
+			else
+			{
+				mComponents.get<DetectedDevices>()->setDeviceStatus(mKind, devID, DetectedDevices::Device::dsFailed);
 			}
 		}
 	);
-	connect(appStarter, &AdbCommunicator::error, 
-		[](const QString & aErrorText)
+	connect(appStarter, &AdbCommunicator::error, this,
+		[=](const QString & aErrorText)
 		{
 			qDebug() << "Error while starting connection by intent: " << aErrorText;
+			mComponents.get<DetectedDevices>()->setDeviceStatus(mKind, devID, DetectedDevices::Device::dsFailed);
 		}
 	);
-	connect(appStarter, &AdbCommunicator::disconnected, appStarter, &QObject::deleteLater);
 	appStarter->start();
 }
 
@@ -211,12 +278,12 @@ void UsbDeviceEnumerator::updateDeviceList(
 )
 {
 	auto dd = mComponents.get<DetectedDevices>();
-	auto devs = dd->allEnumeratorDevices(mKind);
+	auto devEntries = dd->allEnumeratorDevices(mKind);
 
 	// Set devices no longer tracked as offline:
-	for (const auto & dev: devs)
+	for (const auto & devEntry: devEntries)
 	{
-		const auto & id = dev->enumeratorDeviceID();
+		const auto & id = devEntry.second->enumeratorDeviceID();
 		if (
 			!aOnlineIDs.contains(id) &&
 			!aUnauthIDs.contains(id) &&
@@ -239,15 +306,36 @@ void UsbDeviceEnumerator::updateDeviceList(
 		dd->setDeviceStatus(mKind, id, DetectedDevices::Device::dsOffline);
 	}
 
-	// Online apps need to check the app presence to determine their status:
+	// Request a screenshot for all online devices:
 	for (const auto & id: aOnlineIDs)
 	{
-		auto adbComm = new AdbCommunicator(this);
-		connect(adbComm, &AdbCommunicator::connected,      this,    [=](){ adbComm->assignDevice(id); });
-		connect(adbComm, &AdbCommunicator::deviceAssigned, adbComm, &AdbCommunicator::queryAppPresence);
-		connect(adbComm, &AdbCommunicator::appPresent,     this,    &UsbDeviceEnumerator::tryStartApp(id));
-		connect(adbComm, &AdbCommunicator::appNotPresent,  this,    [=](){ dd->setDeviceStatus(mKind, id, DetectedDevices::Device::dsNeedApp); });
-		connect(adbComm, &AdbCommunicator::disconnected,   adbComm, &QObject::deleteLater);
+		auto devItr = devEntries.find(id);
+		if (devItr != devEntries.cend())
+		{
+			if (devItr->second->avatar().isNull())
+			{
+				requestDeviceScreenshot(id);
+			}
+		}
+	}
+
+	// New online devs need to check the app presence to determine their status:
+	for (const auto & id: aOnlineIDs)
+	{
+		auto devItr = devEntries.find(id);
+		if (devItr == devEntries.cend())
+		{
+			// The device is new, try connecting to its app:
+			tryStartApp(id);
+			continue;
+		}
+		// The device has been known before, check if the status could use updating:
+		if (devItr->second->status() == DetectedDevices::Device::dsNeedApp)
+		{
+			// We didn't detect the app before, perhaps it has been installed in the meantime?
+			tryStartApp(id);
+			continue;
+		}
 	}
 }
 

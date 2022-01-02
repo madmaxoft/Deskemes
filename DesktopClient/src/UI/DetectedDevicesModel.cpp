@@ -39,14 +39,20 @@ DetectedDevicesModel::DetectedDevicesModel(ComponentCollection & aComponents, QO
 	Super(aParent),
 	mComponents(aComponents)
 {
-	// Bind to the ckDetectedDevices:
+	// Bind to the ckDetectedDevices' callbacks:
 	auto dd = aComponents.get<DetectedDevices>();
 	connect(dd.get(), &DetectedDevices::deviceAdded,         this, &DetectedDevicesModel::addDevice,          Qt::QueuedConnection);
 	connect(dd.get(), &DetectedDevices::deviceRemoved,       this, &DetectedDevicesModel::removeDevice,       Qt::QueuedConnection);
 	connect(dd.get(), &DetectedDevices::deviceStatusChanged, this, &DetectedDevicesModel::updateDeviceStatus, Qt::QueuedConnection);
 	connect(dd.get(), &DetectedDevices::deviceAvatarChanged, this, &DetectedDevicesModel::updateDeviceAvatar, Qt::QueuedConnection);
 	connect(dd.get(), &DetectedDevices::deviceNameChanged,   this, &DetectedDevicesModel::updateDeviceName,   Qt::QueuedConnection);
-	mDevices = dd->devices();
+
+	// Read the currently-present devices:
+	auto currentDevices = dd->devices();
+	for (const auto & dev: currentDevices)
+	{
+		mDevices.push_back(dev.second);
+	}
 }
 
 
@@ -132,6 +138,7 @@ QVariant DetectedDevicesModel::data(const QModelIndex & aIndex, int aRole) const
 						case DetectedDevices::Device::dsOffline:      return tr("Offline");
 						case DetectedDevices::Device::dsBlacklisted:  return tr("Blacklisted");
 						case DetectedDevices::Device::dsNeedApp:      return tr("App not installed");
+						case DetectedDevices::Device::dsFailed:       return tr("Connection failed");
 					}
 					return {};
 				}

@@ -63,6 +63,7 @@ int PgNeedAuth::nextId() const
 		case DetectedDevices::Device::dsOffline:      return NewDeviceWizard::pgFailed;
 		case DetectedDevices::Device::dsOnline:       return NewDeviceWizard::pgSucceeded;
 		case DetectedDevices::Device::dsUnauthorized: return NewDeviceWizard::pgNeedAuth;
+		case DetectedDevices::Device::dsFailed:       return NewDeviceWizard::pgFailed;
 	}
 	#ifdef _MSC_VER
 		assert(!"Unknown device status");
@@ -86,6 +87,7 @@ void PgNeedAuth::checkDeviceStatus(DetectedDevices::DevicePtr aDevice)
 		case DetectedDevices::Device::dsNeedApp:
 		case DetectedDevices::Device::dsNeedPairing:
 		case DetectedDevices::Device::dsOnline:
+		case DetectedDevices::Device::dsFailed:
 		{
 			wizard()->next();
 			break;

@@ -41,6 +41,7 @@ public:
 			dsBlacklisted,   ///< The device has been blacklisted, connections will not be allowed
 			dsOffline,       ///< The device is known but unavailable (ADB bootloader, ...)
 			dsNeedApp,       ///< The app is not installed on the device (ADB)
+			dsFailed,        ///< The device failed to connect properly, unknown reason (eg. ADB port-reversing failed)
 		};
 
 		Device(ComponentCollection::ComponentKind aEnumeratorKind, const QByteArray & aEnumeratorDeviceID, Status aStatus);
@@ -80,6 +81,9 @@ public:
 	};
 
 	using DevicePtr = std::shared_ptr<Device>;
+
+	/** A map of {EnumeratorKind, EnumeratorID} -> DevicePtr */
+	using DevicePtrMap = std::map<std::pair<ComponentCollection::ComponentKind, QByteArray>, DevicePtr>;
 
 	/** A simple container for EnumeratorDeviceID + Status tuples. */
 	using DeviceStatusList = std::vector<std::pair<QByteArray, Device::Status>>;
@@ -122,10 +126,10 @@ public:
 	void updateEnumeratorDeviceList(ComponentCollection::ComponentKind aEnumeratorKind, const DeviceStatusList & aNewDeviceList);
 
 	/** Returns all the devices currently tracked (a copy of mDevices). */
-	std::vector<DevicePtr> devices() const;
+	DevicePtrMap devices() const;
 
 	/** Returns all of the devices currently tracked by the specified enumerator. */
-	std::vector<DevicePtr> allEnumeratorDevices(ComponentCollection::ComponentKind aEnumeratorKind) const;
+	std::map<QByteArray, DevicePtr> allEnumeratorDevices(ComponentCollection::ComponentKind aEnumeratorKind) const;
 
 
 Q_SIGNALS:
@@ -152,7 +156,7 @@ protected:
 	mutable QRecursiveMutex mtxDevices;
 
 	/** All the devices, in no particular order, protected by mMtxDevices. */
-	std::vector<DevicePtr> mDevices;
+	DevicePtrMap mDevices;
 };
 
 Q_DECLARE_METATYPE(DetectedDevices::DevicePtr);

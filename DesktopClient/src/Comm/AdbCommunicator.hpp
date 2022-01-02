@@ -28,7 +28,7 @@ public:
 	AdbCommunicator(QObject * aParent = nullptr);
 
 
-public slots:
+public Q_SLOTS:
 
 	/** Starts connecting to the local ADB server.
 	A connected() signal is emitted once connected, and ready() signal is then emitted once the connection
@@ -50,11 +50,6 @@ public slots:
 	All further communications on this connection will be relayed directly to the ADB daemon on the device.
 	Once the switch is confirmed by the ADB server, the deviceAssigned() signal is emitted. */
 	void assignDevice(const QByteArray & aDeviceID);
-
-	/** Queries the app presence on the specified device.
-	Sends a shell command to the "pm" on the device and listens for the response.
-	Causes either the appPresent() or appNotPresent() signal to be emitted. */
-	void queryAppPresence(const QByteArray & aDeviceID);
 
 	/** Instructs the device to send a screenshot.
 	Needs a device assigned first. Multiple successive screenshots can be requested using one object instance.
@@ -119,12 +114,6 @@ Q_SIGNALS:
 	May be emitted multiple times when more data is received. */
 	void shellIncomingData(const QByteArray & aDeviceID, const QByteArray & aStdOutOrErr);
 
-	/** Emitted after using queryAppPresence() if the app is detected. */
-	void appPresent(const QByteArray & aDeviceID);
-
-	/** Emitted after using queryAppPresence() if the app is NOT detected. */
-	void appNotPresent(const QByteArray & aDeviceID);
-
 
 protected:
 
@@ -149,8 +138,6 @@ protected:
 		csScreenshotting,       ///< after takeScreenshot() has been called, waiting for the framebuffer contents.
 
 		csPortReversing,  ///< after portReverse() has been called
-
-		csAppPresenceQuery,  ///< after queryAppPresence, waiting for the response.
 
 		csExecutingShellV1,  ///< after shellExecuteV1() has been called, executing a shell command and relaying stdout + stderr
 	};
@@ -202,7 +189,7 @@ protected Q_SLOTS:
 	void onSocketConnected();
 
 	/** Emitted by mSocket when it encounters an error. */
-	void onSocketError();
+	void onSocketError(QAbstractSocket::SocketError aError);
 
 	/** Emitted by mSocket when it disconnects from the remote endpoint. */
 	void onSocketDisconnected();

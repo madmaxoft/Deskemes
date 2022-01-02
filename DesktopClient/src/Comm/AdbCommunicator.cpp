@@ -442,12 +442,18 @@ void AdbCommunicator::onSocketConnected()
 
 
 
-void AdbCommunicator::onSocketError()
+void AdbCommunicator::onSocketError(QAbstractSocket::SocketError aError)
 {
+	if (aError == QAbstractSocket::RemoteHostClosedError)
+	{
+		// This is an expected state, don't log or emit anything
+		return;
+	}
+
 	qDebug() << "Socket error: " << mSocket.errorString();
 	mState = csBroken;
 	mSocket.abort();
-	emit error(tr("Error on the underlying TCP socket"));
+	emit error(tr("Error on the underlying TCP socket: %1").arg(mSocket.errorString()));
 }
 
 

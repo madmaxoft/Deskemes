@@ -142,11 +142,11 @@
 <context>
     <name>PgDeviceList</name>
     <message>
-        <source>Form</source>
+        <source>Detecting devices</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Select your device when it appears in the list:</source>
+        <source>Select your device when it appears in the list</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -167,13 +167,17 @@
 %2 (SHA256)</source>
         <translation type="unfinished"></translation>
     </message>
+    <message>
+        <source>Authentication needed</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>USB connection needs to be authenticated first</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>PgPairConfirm</name>
-    <message>
-        <source>Form</source>
-        <translation type="unfinished"></translation>
-    </message>
     <message>
         <source>This device uses a key not yet encountered</source>
         <translation type="unfinished"></translation>
@@ -196,15 +200,7 @@ Check that the thumbprint image displayed here matches the thumbprint image disp
 <context>
     <name>PgPairInit</name>
     <message>
-        <source>Form</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <source>Generate public key for %1</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Please wait...</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -219,10 +215,6 @@ Check that the thumbprint image displayed here matches the thumbprint image disp
 <context>
     <name>PgPairingInProgress</name>
     <message>
-        <source>WizardPage</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <source>Waiting for confirmation.</source>
         <translation type="unfinished"></translation>
     </message>
@@ -232,17 +224,6 @@ Check that the thumbprint image displayed here matches the thumbprint image disp
     </message>
     <message>
         <source>Waiting for confirmation</source>
-        <translation type="unfinished"></translation>
-    </message>
-</context>
-<context>
-    <name>PgSucceeded</name>
-    <message>
-        <source>Success</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>The device has been successfully added</source>
         <translation type="unfinished"></translation>
     </message>
 </context>

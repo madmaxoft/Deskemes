@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
  <class>PgSucceeded</class>
- <widget class="QWidget" name="PgSucceeded">
+ <widget class="QWizardPage" name="PgSucceeded">
   <property name="geometry">
    <rect>
     <x>0</x>
@@ -10,8 +10,11 @@
     <height>300</height>
    </rect>
   </property>
-  <property name="windowTitle">
-   <string>Form</string>
+  <property name="title">
+   <string>Success</string>
+  </property>
+  <property name="subTitle">
+   <string>The device has been successfully added</string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>

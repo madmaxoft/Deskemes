@@ -13,6 +13,12 @@
   <property name="windowTitle">
    <string>WizardPage</string>
   </property>
+  <property name="title">
+   <string>Authentication needed</string>
+  </property>
+  <property name="subTitle">
+   <string>USB connection needs to be authenticated first</string>
+  </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
     <widget class="QLabel" name="lblInstructions">

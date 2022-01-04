@@ -16,8 +16,6 @@ PgPairingInProgress::PgPairingInProgress(ComponentCollection & aComponents, NewD
 	mUI(new Ui::PgPairingInProgress)
 {
 	mUI->setupUi(this);
-	setTitle(tr("Waiting for confirmation"));
-	setSubTitle(tr("Please confirm the pairing on your device"));
 }
 
 

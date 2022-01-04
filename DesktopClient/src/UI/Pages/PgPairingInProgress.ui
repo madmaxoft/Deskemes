@@ -10,8 +10,11 @@
     <height>300</height>
    </rect>
   </property>
-  <property name="windowTitle">
-   <string>WizardPage</string>
+  <property name="title">
+   <string>Waiting for confirmation</string>
+  </property>
+  <property name="subTitle">
+   <string>Please confirm the pairing on your device</string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>

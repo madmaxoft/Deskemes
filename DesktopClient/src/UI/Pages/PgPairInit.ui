@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
  <class>PgPairInit</class>
- <widget class="QWidget" name="PgPairInit">
+ <widget class="QWizardPage" name="PgPairInit">
   <property name="geometry">
    <rect>
     <x>0</x>
@@ -10,20 +10,13 @@
     <height>300</height>
    </rect>
   </property>
-  <property name="windowTitle">
-   <string>Form</string>
+  <property name="title">
+   <string>Waiting for device</string>
+  </property>
+  <property name="subTitle">
+   <string>Initializing a secure connection to the device</string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
-   <item>
-    <widget class="QLabel" name="label">
-     <property name="text">
-      <string>Please wait...</string>
-     </property>
-     <property name="wordWrap">
-      <bool>true</bool>
-     </property>
-    </widget>
-   </item>
    <item>
     <widget class="QProgressBar" name="progressBar">
      <property name="maximum">

@@ -46,6 +46,10 @@ public:
 	/** Starts the enumerator. */
 	virtual void start() override;
 
+	/** Indicates whether ADB executable can be started.
+	Initialized upon thread start, never updated (need to restart app to re-detect). */
+	bool isAdbAvailable() const { return mIsAdbAvailable; }
+
 
 protected:
 
@@ -69,6 +73,10 @@ protected:
 	Map of DeviceID -> Status.
 	To be accessed only from this object's thread. */
 	std::map<QByteArray, DetectionStatus> mDetectionStatus;
+
+	/** Indicates whether ADB executable can be started.
+	Initialized upon thread start, never updated (need to restart app to re-detect). */
+	bool mIsAdbAvailable;
 
 
 	// QThread overrides:

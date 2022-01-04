@@ -11,7 +11,8 @@
 
 
 UsbDeviceEnumerator::UsbDeviceEnumerator(ComponentCollection & aComponents):
-	ComponentSuper(aComponents)
+	ComponentSuper(aComponents),
+	mIsAdbAvailable(false)
 {
 	requireForStart(ComponentCollection::ckTcpListener);
 	requireForStart(ComponentCollection::ckDetectedDevices);
@@ -50,7 +51,10 @@ void UsbDeviceEnumerator::start()
 void UsbDeviceEnumerator::run()
 {
 	// Try to start the ADB server, if not running already:
-	QProcess::execute("adb", {"devices"});
+	if (QProcess::execute("adb", {"devices"}) != 0)
+	{
+		mIsAdbAvailable = false;
+	}
 
 	// Set up the device tracking:
 	auto adbDevList = std::make_unique<AdbCommunicator>();

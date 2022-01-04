@@ -13,8 +13,6 @@ PgSucceeded::PgSucceeded(ComponentCollection & aComponents, NewDeviceWizard & aP
 	mUI(new Ui::PgSucceeded)
 {
 	mUI->setupUi(this);
-	setTitle(tr("Success"));
-	setSubTitle(tr("The device has been successfully added"));
 	setFinalPage(true);
 }
 

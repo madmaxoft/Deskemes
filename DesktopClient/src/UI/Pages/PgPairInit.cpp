@@ -20,8 +20,6 @@ PgPairInit::PgPairInit(ComponentCollection & aComponents, NewDeviceWizard & aPar
 	mIsLocalKeyPairCreated(false)
 {
 	mUI->setupUi(this);
-	setTitle(tr("Waiting for device"));
-	setSubTitle(tr("Initializing a secure connection to the device"));
 }
 
 

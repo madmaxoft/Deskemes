@@ -19,8 +19,6 @@ PgPairConfirm::PgPairConfirm(ComponentCollection & aComponents, NewDeviceWizard 
 	mUI(new Ui::PgPairConfirm)
 {
 	mUI->setupUi(this);
-	setTitle(tr("Confirm encryption key"));
-	setSubTitle(tr("This device uses a key not yet encountered"));
 	setCommitPage(true);
 	connect(mUI->chbKeysMatch, &QCheckBox::stateChanged, this, &QWizardPage::completeChanged);
 }

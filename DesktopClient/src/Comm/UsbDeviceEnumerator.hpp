@@ -1,6 +1,9 @@
 #pragma once
 
 #include <atomic>
+#include <map>
+#include <set>
+
 #include <QThread>
 #include <QTimer>
 #include <QImage>
@@ -73,6 +76,11 @@ protected:
 	Map of DeviceID -> Status.
 	To be accessed only from this object's thread. */
 	std::map<QByteArray, DetectionStatus> mDetectionStatus;
+
+	/** Tracks the devices for which the screenshot command has failed (so that no further screenshots will be requested for them).
+	Map of DeviceID -> bool (true = failed).
+	To be accessed only from this object's thread. */
+	std::set<QByteArray> mDevicesFailedScreenshot;
 
 	/** Indicates whether ADB executable can be started.
 	Initialized upon thread start, never updated (need to restart app to re-detect). */

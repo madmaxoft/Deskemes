@@ -110,6 +110,13 @@ void UsbDeviceEnumerator::invRequestDeviceScreenshot(const QByteArray & aDeviceI
 	connect(adbScreenshotter, &AdbCommunicator::deviceAssigned,     adbScreenshotter, [=](){adbScreenshotter->takeScreenshot();});
 	connect(adbScreenshotter, &AdbCommunicator::screenshotReceived, this,             &UsbDeviceEnumerator::updateDeviceLastScreenshot);
 	connect(adbScreenshotter, &AdbCommunicator::disconnected,       adbScreenshotter, &QObject::deleteLater);
+	connect(adbScreenshotter, &AdbCommunicator::error, this,
+		[=](const QString & aErrorText)
+		{
+			qDebug() << "Device " << devID << " has failed to produce screenshot: " << aErrorText;
+			mDevicesFailedScreenshot.insert(devID);
+		}
+	);
 	adbScreenshotter->start();
 }
 
@@ -304,15 +311,20 @@ void UsbDeviceEnumerator::updateDeviceList(
 		dd->setDeviceStatus(mKind, id, DetectedDevices::Device::dsUnauthorized);
 	}
 
-	// Set all other devices as dsOffline:
+	// Set all other devices as dsOffline; forget about screenshot failures:
 	for (const auto & id: aOtherIDs)
 	{
 		dd->setDeviceStatus(mKind, id, DetectedDevices::Device::dsOffline);
+		mDevicesFailedScreenshot.erase(id);
 	}
 
-	// Request a screenshot for all online devices:
+	// Request a screenshot for all online devices that haven't failed to screenshot before:
 	for (const auto & id: aOnlineIDs)
 	{
+		if (mDevicesFailedScreenshot.find(id) != mDevicesFailedScreenshot.cend())
+		{
+			continue;
+		}
 		auto devItr = devEntries.find(id);
 		if (devItr != devEntries.cend())
 		{

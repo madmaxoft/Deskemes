@@ -566,6 +566,12 @@ void AdbCommunicator::onSocketReadyRead()
 
 			case csScreenshottingStart:
 			{
+				// Check if failure is reported:
+				if (!extractOkayOrFail())
+				{
+					break;
+				}
+
 				// Look for the 32-byte header:
 				if (mIncomingData.size() < 32)
 				{

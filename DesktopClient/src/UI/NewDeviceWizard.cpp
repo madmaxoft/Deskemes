@@ -1,6 +1,7 @@
 #include "NewDeviceWizard.hpp"
 #include <QWizard>
 #include "Pages/PgDeviceList.hpp"
+#include "Pages/PgNeedApp.hpp"
 #include "Pages/PgNeedAuth.hpp"
 #include "Pages/PgPairInit.hpp"
 #include "Pages/PgPairConfirm.hpp"
@@ -19,6 +20,7 @@ NewDeviceWizard::NewDeviceWizard(ComponentCollection & aComponents, QWidget * aP
 	setWindowTitle(tr("Deskemes: Add new device"));
 	setWizardStyle(QWizard::ModernStyle);
 	setPage(pgDeviceList,        new PgDeviceList       (mComponents, *this));
+	setPage(pgNeedApp,           new PgNeedApp          (mComponents, *this));
 	setPage(pgNeedAuth,          new PgNeedAuth         (mComponents, *this));
 	setPage(pgPairInit,          new PgPairInit         (mComponents, *this));
 	setPage(pgPairConfirm,       new PgPairConfirm      (mComponents, *this));

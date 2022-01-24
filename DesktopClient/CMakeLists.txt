@@ -146,6 +146,7 @@ add_definitions(-DQT_MESSAGELOGCONTEXT)
 # Source files:
 set(SOURCES
 	# The Communication-related sources:
+	src/Comm/AdbAppInstaller.cpp
 	src/Comm/AdbCommunicator.cpp
 	src/Comm/Connection.cpp
 	src/Comm/ConnectionMgr.cpp
@@ -175,6 +176,7 @@ set(SOURCES
 
 	# The Wizard pages:
 	src/UI/Pages/PgDeviceList.cpp
+	src/UI/Pages/PgNeedApp.cpp
 	src/UI/Pages/PgNeedAuth.cpp
 	src/UI/Pages/PgPairConfirm.cpp
 	src/UI/Pages/PgPairInit.cpp
@@ -195,6 +197,7 @@ set(SOURCES
 set(HEADERS
 	# The Communication-related headers:
 	src/Comm/AdbCommunicator.hpp
+	src/Comm/AdbAppInstaller.hpp
 	src/Comm/Connection.hpp
 	src/Comm/ConnectionMgr.hpp
 	src/Comm/DetectedDevices.hpp
@@ -223,6 +226,7 @@ set(HEADERS
 
 	# The Wizard pages:
 	src/UI/Pages/PgDeviceList.hpp
+	src/UI/Pages/PgNeedApp.hpp
 	src/UI/Pages/PgNeedAuth.hpp
 	src/UI/Pages/PgPairConfirm.hpp
 	src/UI/Pages/PgPairInit.hpp
@@ -247,6 +251,7 @@ set(UI
 	src/UI/WndDevices.ui
 
 	src/UI/Pages/PgDeviceList.ui
+	src/UI/Pages/PgNeedApp.ui
 	src/UI/Pages/PgNeedAuth.ui
 	src/UI/Pages/PgPairConfirm.ui
 	src/UI/Pages/PgPairInit.ui

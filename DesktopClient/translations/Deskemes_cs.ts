@@ -2,6 +2,39 @@
 <!DOCTYPE TS>
 <TS version="2.1" language="cs_CZ">
 <context>
+    <name>AdbAppInstaller</name>
+    <message>
+        <source>The underlying ADB process failed to start.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The underlying ADB process crashed.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The underlying ADB process seems to have frozen.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Failed to send data to the underlying ADB process.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Failed to read data from the underlying ADB process.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Unknown error in the underlying ADB process.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The ADB process reported an error:
+%1
+%2</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
     <name>AdbCommunicator</name>
     <message>
         <source>Unexpected data received on the socket</source>
@@ -147,6 +180,42 @@
     </message>
     <message>
         <source>Select your device when it appears in the list</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>PgNeedApp</name>
+    <message>
+        <source>Install the app</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Deskemes needs to install the app on the device</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Deskemes can push the app to your device over the USB connection, but you need to allow app installation from unknown sources in the phone settings first.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Push the app over USB cable</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>If that doesn&apos;t work, you can also try opening the app package in a browser:</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Open browser</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>App installation failed:
+%1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>App installation succeeded.</source>
         <translation type="unfinished"></translation>
     </message>
 </context>

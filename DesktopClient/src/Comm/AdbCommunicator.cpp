@@ -346,7 +346,7 @@ void AdbCommunicator::parseDeviceList(const QByteArray & aMessage)
 			otherIDs.push_back(parts[0]);
 		}
 	}
-	emit updateDeviceList(onlineIDs, unauthIDs, otherIDs);
+	Q_EMIT updateDeviceList(onlineIDs, unauthIDs, otherIDs);
 }
 
 
@@ -362,6 +362,11 @@ bool AdbCommunicator::extractOkayOrFail()
 	}
 	if (mIncomingData.startsWith("FAIL"))
 	{
+		if (mIncomingData.size() < 8)
+		{
+			// Need more data
+			return false;
+		}
 		auto length = hex4ToNumber(mIncomingData.mid(4, 4));
 		if (mIncomingData.size() < length + 8)
 		{
@@ -370,7 +375,7 @@ bool AdbCommunicator::extractOkayOrFail()
 		}
 		auto err = mIncomingData.mid(8, length);
 		mIncomingData = mIncomingData.mid(length + 8);
-		emit error(QString::fromUtf8(err));
+		Q_EMIT error(QString::fromUtf8(err));
 		return false;
 	}
 	else if (mIncomingData.startsWith("OKAY"))
@@ -382,7 +387,7 @@ bool AdbCommunicator::extractOkayOrFail()
 	{
 		mState = csBroken;
 		mSocket.abort();
-		emit error(tr("Malformed response received from ADB server"));
+		Q_EMIT error(tr("Malformed response received from ADB server"));
 		return false;
 	}
 }
@@ -423,7 +428,7 @@ void AdbCommunicator::processScreenshot()
 		static_cast<int>(mFramebufferHeight),
 		QImage::Format_RGB16
 	);
-	emit screenshotReceived(mAssignedDeviceID, img);
+	Q_EMIT screenshotReceived(mAssignedDeviceID, img);
 	mIncomingData = mIncomingData.mid(static_cast<int>(mFramebufferSize));
 }
 
@@ -435,7 +440,7 @@ void AdbCommunicator::onSocketConnected()
 {
 	assert(mState == csConnecting);
 	mState = csReady;
-	emit connected();
+	Q_EMIT connected();
 }
 
 
@@ -453,7 +458,7 @@ void AdbCommunicator::onSocketError(QAbstractSocket::SocketError aError)
 	qDebug() << "Socket error: " << mSocket.errorString();
 	mState = csBroken;
 	mSocket.abort();
-	emit error(tr("Error on the underlying TCP socket: %1").arg(mSocket.errorString()));
+	Q_EMIT error(tr("Error on the underlying TCP socket: %1").arg(mSocket.errorString()));
 }
 
 
@@ -465,7 +470,7 @@ void AdbCommunicator::onSocketDisconnected()
 	qDebug() << "Socket disconnected: " << mSocket.errorString();
 	mState = csBroken;
 	mSocket.abort();
-	emit disconnected();
+	Q_EMIT disconnected();
 }
 
 
@@ -499,7 +504,7 @@ void AdbCommunicator::onSocketReadyRead()
 			{
 				// Invalid state, break the connection
 				mState = csBroken;
-				emit error(tr("Unexpected data received on the socket"));
+				Q_EMIT error(tr("Unexpected data received on the socket"));
 				break;
 			}
 
@@ -553,7 +558,7 @@ void AdbCommunicator::onSocketReadyRead()
 				if (extractOkayOrFail())
 				{
 					mState = csDeviceAssigned;
-					emit deviceAssigned(mAssignedDeviceID);
+					Q_EMIT deviceAssigned(mAssignedDeviceID);
 				}
 				break;
 			}
@@ -600,14 +605,14 @@ void AdbCommunicator::onSocketReadyRead()
 				if (extractOkayOrFail())
 				{
 					mState = csBroken;  // The connection will be terminated from the device side
-					emit portReversingEstablished(mAssignedDeviceID);
+					Q_EMIT portReversingEstablished(mAssignedDeviceID);
 				}
 				break;
 			}
 
 			case csExecutingShellV1:
 			{
-				emit shellIncomingData(mAssignedDeviceID, mIncomingData);
+				Q_EMIT shellIncomingData(mAssignedDeviceID, mIncomingData);
 				mIncomingData.clear();
 				break;
 			}

@@ -31,8 +31,7 @@ public:
 public Q_SLOTS:
 
 	/** Starts connecting to the local ADB server.
-	A connected() signal is emitted once connected, and ready() signal is then emitted once the connection
-	is verified to be to a local ADB server. The error() signal is emitted on error. */
+	A connected() signal is emitted once connected. The error() signal is emitted on error. */
 	void start();
 
 	/** Asks ADB for the list of devices.

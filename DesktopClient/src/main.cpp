@@ -11,6 +11,7 @@
 #include "Device.hpp"
 #include "DeviceMgr.hpp"
 #include "InstallConfiguration.hpp"
+#include "MultiLogger.hpp"
 #include "Settings.hpp"
 #include "DB/DatabaseBackup.hpp"
 #include "DB/Database.hpp"
@@ -113,6 +114,7 @@ int main(int argc, char *argv[])
 
 		// Create the main app objects:
 		cc.addComponent(instConf);
+		auto multiLogger     = cc.addNew<MultiLogger>(instConf->logsFolder());
 		auto mainDB          = cc.addNew<Database>();
 		auto devMgr          = cc.addNew<DeviceMgr>();
 		auto connMgr         = cc.addNew<ConnectionMgr>();

@@ -34,6 +34,9 @@ public:
 	/** Returns the path to the folder into which DB backups should be stored. */
 	QString dbBackupsFolder() const { return dataLocation("backups/"); }
 
+	/** Returns the path to the folder into which the logs should be written. */
+	QString logsFolder() const { return dataLocation("logs/"); }
+
 	/** Loads the values that are stored in the Settings object.
 	This is only used during app initialization. */
 	void loadFromSettings();

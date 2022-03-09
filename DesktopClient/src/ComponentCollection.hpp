@@ -32,6 +32,7 @@ public:
 	enum ComponentKind
 	{
 		ckInstallConfiguration,
+		ckMultiLogger,                ///< The per-device and per-subsystem logger
 		ckDatabase,
 		ckDevices,
 		ckUdpBroadcaster,

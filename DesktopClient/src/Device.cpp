@@ -1,13 +1,15 @@
 #include "Device.hpp"
 #include <cassert>
 #include "Comm/Channels/InfoChannel.hpp"
+#include "MultiLogger.hpp"
 
 
 
 
 
-Device::Device(const QByteArray & aDeviceID):
-	mDeviceID(aDeviceID)
+Device::Device(ComponentCollection & aComponents, const QByteArray & aDeviceID):
+	mDeviceID(aDeviceID),
+	mLogger(createLogger(aComponents, aDeviceID))
 {
 	assert(!mDeviceID.isEmpty());
 }
@@ -18,6 +20,10 @@ Device::Device(const QByteArray & aDeviceID):
 
 void Device::addConnection(ConnectionPtr aConnection)
 {
+	mLogger.log("Adding connection %1, transport %2; friendlyName %3",
+		aConnection->connectionID(), aConnection->transportKind(),
+		aConnection->friendlyName().valueOrDefault()
+	);
 	mConnections.push_back(aConnection);
 	connect(aConnection.get(), &Connection::disconnected, this, &Device::connDisconnected);
 
@@ -51,10 +57,10 @@ const QString & Device::friendlyName() const
 
 void Device::openInfoChannel()
 {
-	qDebug() << "Opening an info channel";
+	mLogger.log("Opening an info channel...");
 	if (mConnections.empty())
 	{
-		qWarning() << "Cannot open InfoChannel, there's no connection";
+		mLogger.log("WARNING: Cannot open InfoChannel, there's no connection");
 		return;
 	}
 
@@ -65,7 +71,7 @@ void Device::openInfoChannel()
 	connect(mInfoChannel.get(), &InfoChannel::receivedCarrierName,    this, &Device::receivedIdentification);
 	connect(mInfoChannel.get(), &InfoChannel::receivedBattery,        this, &Device::batteryUpdated);
 	connect(mInfoChannel.get(), &InfoChannel::receivedSignalStrength, this, &Device::signalStrengthUpdated);
-	connect(mInfoChannel.get(), &InfoChannel::opened,
+	connect(mInfoChannel.get(), &InfoChannel::opened, this,
 		[this](Connection::Channel * aChannel)
 		{
 			if (aChannel != mInfoChannel.get())
@@ -78,7 +84,7 @@ void Device::openInfoChannel()
 			mInfoChannel->queryBattery();
 		}
 	);
-	connect(mInfoChannel.get(), &InfoChannel::failed,
+	connect(mInfoChannel.get(), &InfoChannel::failed, this,
 		[this](Connection::Channel * aChannel, const quint16 aErrorCode, const QByteArray & aErrorMsg)
 		{
 			Q_UNUSED(aChannel);
@@ -86,7 +92,7 @@ void Device::openInfoChannel()
 			qWarning() << "Failed to open the info channel: " << aErrorCode << ": " << aErrorMsg;
 		}
 	);
-	connect(conn.get(), &Connection::disconnected,
+	connect(conn.get(), &Connection::disconnected, this,
 		[this]()
 		{
 			mInfoChannel.reset();
@@ -94,8 +100,17 @@ void Device::openInfoChannel()
 	);
 	if (!conn->openChannel(mInfoChannel, "info"))
 	{
-		qWarning() << "Failed to open the InfoChannel for device " << friendlyName();
+		mLogger.log("WARNING: Failed to open the InfoChannel.");
 	}
+}
+
+
+
+
+
+Logger & Device::createLogger(ComponentCollection & aComponents, const QString & aDeviceID)
+{
+	return aComponents.get<MultiLogger>()->logger("Device-" + aDeviceID);
 }
 
 
@@ -112,8 +127,9 @@ void Device::queryStatusInfo()
 	}
 	if (!mInfoChannel->isOpen())
 	{
-		// The channel is waiting for open confirmation, not yet
+		// Either the channel is waiting for open confirmation, or its connection has been closed.
 		// TODO: If this happens 3 times in a row, close the channel and open a new one.
+		mLogger.log("Info channel is not open.");
 		return;
 	}
 	mInfoChannel->querySignal();
@@ -135,6 +151,10 @@ void Device::receivedIdentification()
 
 void Device::connDisconnected(Connection * aConnection)
 {
+	mLogger.log("Connection %1 (transport %2) disconnected",
+		aConnection->connectionID(), aConnection->transportKind()
+	);
+
 	// Remove the connection from mConnections:
 	mConnections.erase(std::remove_if(mConnections.begin(), mConnections.end(),
 		[aConnection](ConnectionPtr aStoredConnection)
@@ -147,6 +167,7 @@ void Device::connDisconnected(Connection * aConnection)
 	// If this was the last connection, go offline:
 	if (mConnections.empty())
 	{
+		mLogger.log("This was the last connection, going offline.");
 		mInfoQueryTimer.stop();
 		emit goingOffline();
 	}

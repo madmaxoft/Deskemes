@@ -5,7 +5,6 @@
 #include <fstream>
 #include <random>
 #include <atomic>
-#include <QDebug>
 #include <QSqlError>
 #include <QSqlQuery>
 #include <QSqlRecord>
@@ -30,13 +29,14 @@ public:
 
 	/** Starts a transaction.
 	If a transaction cannot be started, logs and throws a RuntimeError. */
-	SqlTransaction(QSqlDatabase & a_DB):
+	SqlTransaction(QSqlDatabase & a_DB, Logger & aLogger):
 		m_DB(a_DB),
-		m_IsActive(a_DB.transaction())
+		m_IsActive(a_DB.transaction()),
+		mLogger(aLogger)
 	{
 		if (!m_IsActive)
 		{
-			throw RuntimeError("DB doesn't support transactions: %1", m_DB.lastError());
+			throw RuntimeError(mLogger, "DB doesn't support transactions: %1", m_DB.lastError());
 		}
 	}
 
@@ -49,7 +49,7 @@ public:
 		{
 			if (!m_DB.rollback())
 			{
-				qWarning() << "DB transaction rollback failed: " << m_DB.lastError();
+				mLogger.log("DB transaction rollback failed: %1", m_DB.lastError());
 				return;
 			}
 		}
@@ -63,11 +63,11 @@ public:
 	{
 		if (!m_IsActive)
 		{
-			throw RuntimeError("DB transaction not started");
+			throw RuntimeError(mLogger, "DB transaction not started");
 		}
 		if (!m_DB.commit())
 		{
-			throw LogicError("DB transaction commit failed: %1", m_DB.lastError());
+			throw LogicError(mLogger, "DB transaction commit failed: %1", m_DB.lastError());
 		}
 		m_IsActive = false;
 	}
@@ -77,6 +77,7 @@ protected:
 
 	QSqlDatabase & m_DB;
 	bool m_IsActive;
+	Logger & mLogger;
 };
 
 
@@ -112,7 +113,7 @@ QSqlQuery Database::DBConnection::query(const QString & aQueryString)
 	QSqlQuery res(mParent.mDatabase);
 	if (!res.prepare(aQueryString))
 	{
-		throw DBQueryError("Failed to prepare query: %1 (query \"%2\")", res.lastError().text(), aQueryString);
+		throw DBQueryError(mParent.mLogger, "Failed to prepare query: %1 (query \"%2\")", res.lastError().text(), aQueryString);
 	}
 	return res;
 }
@@ -125,7 +126,8 @@ QSqlQuery Database::DBConnection::query(const QString & aQueryString)
 // Database:
 
 Database::Database(ComponentCollection & aComponents):
-	ComponentSuper(aComponents)
+	ComponentSuper(aComponents),
+	mLogger(aComponents.logger("DB"))
 {
 	requireForStart(ComponentCollection::ckInstallConfiguration);
 }
@@ -136,9 +138,10 @@ Database::Database(ComponentCollection & aComponents):
 
 void Database::start()
 {
+	mLogger.log("Starting the Database component");
 	auto instConf = mComponents.get<InstallConfiguration>();
 	auto dbFile = instConf->dbFileName();
-	DatabaseBackup::dailyBackupOnStartup(dbFile, instConf->dbBackupsFolder());
+	DatabaseBackup::dailyBackupOnStartup(dbFile, instConf->dbBackupsFolder(), mLogger);
 	open(dbFile);
 }
 
@@ -156,7 +159,7 @@ void Database::open(const QString & a_DBFileName)
 	mDatabase.setDatabaseName(a_DBFileName);
 	if (!mDatabase.open())
 	{
-		throw RuntimeError(tr("Cannot open the DB file: %1"), mDatabase.lastError());
+		throw RuntimeError(mLogger, tr("Cannot open the DB file: %1"), mDatabase.lastError());
 	}
 
 	// Check DB version, if upgradeable, make a backup first:
@@ -169,7 +172,7 @@ void Database::open(const QString & a_DBFileName)
 			query.reset();
 			if (version > maxVersion)
 			{
-				throw RuntimeError(tr("Cannot open DB, it is from a newer version %1, this program can only handle up to version %2"),
+				throw RuntimeError(mLogger, tr("Cannot open DB, it is from a newer version %1, this program can only handle up to version %2"),
 					version, maxVersion
 				);
 			}
@@ -181,14 +184,14 @@ void Database::open(const QString & a_DBFileName)
 
 				// Backup:
 				auto backupFolder = mComponents.get<InstallConfiguration>()->dbBackupsFolder();
-				DatabaseBackup::backupBeforeUpgrade(a_DBFileName, version, backupFolder);
+				DatabaseBackup::backupBeforeUpgrade(a_DBFileName, version, backupFolder, mLogger);
 
 				// Reopen the DB:
 				mDatabase = QSqlDatabase::addDatabase("QSQLITE", connName);
 				mDatabase.setDatabaseName(a_DBFileName);
 				if (!mDatabase.open())
 				{
-					throw RuntimeError(tr("Cannot open the DB file: %1"), mDatabase.lastError());
+					throw RuntimeError(mLogger, tr("Cannot open the DB file: %1"), mDatabase.lastError());
 				}
 			}
 		}
@@ -198,12 +201,11 @@ void Database::open(const QString & a_DBFileName)
 	auto query = mDatabase.exec("PRAGMA foreign_keys = on");
 	if (query.lastError().type() != QSqlError::NoError)
 	{
-		qWarning() << "Turning foreign keys on failed: " << query.lastError();
-		throw RuntimeError(tr("Cannot initialize the DB keys: %1"), mDatabase.lastError());
+		throw RuntimeError(mLogger, tr("Failed to turn on foreign keys: %1"), query.lastError());
 	}
 
 	// Upgrade the DB to the latest version:
-	DatabaseUpgrade::upgrade(*this);
+	DatabaseUpgrade::upgrade(*this, mLogger);
 }
 
 

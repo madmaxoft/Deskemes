@@ -86,6 +86,9 @@ protected:
 	Initialized upon thread start, never updated (need to restart app to re-detect). */
 	bool mIsAdbAvailable;
 
+	/** The logger used for all messages produced by this class. */
+	Logger & mLogger;
+
 
 	// QThread overrides:
 	virtual void run() override;
@@ -109,6 +112,9 @@ protected:
 	This will "ping" the app to connect to the local port, previously port-reversed through ADB to local computer.
 	Updates the device state in DetectedDeviecs based on the result (dsNeedApp / dsOnline) */
 	void startConnectionToApp(const QByteArray & aDeviceID);
+
+	/** Returns the logger to use for a specific device's AdbCommunicator. */
+	Logger & loggerForDevice(const QString & aDeviceID);
 
 
 public Q_SLOTS:

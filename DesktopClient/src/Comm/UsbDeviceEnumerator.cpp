@@ -12,7 +12,8 @@
 
 UsbDeviceEnumerator::UsbDeviceEnumerator(ComponentCollection & aComponents):
 	ComponentSuper(aComponents),
-	mIsAdbAvailable(false)
+	mIsAdbAvailable(false),
+	mLogger(aComponents.logger("UsbDeviceEnumerator"))
 {
 	requireForStart(ComponentCollection::ckTcpListener);
 	requireForStart(ComponentCollection::ckDetectedDevices);
@@ -27,10 +28,11 @@ UsbDeviceEnumerator::UsbDeviceEnumerator(ComponentCollection & aComponents):
 
 UsbDeviceEnumerator::~UsbDeviceEnumerator()
 {
+	mLogger.log("Terminating...");
 	QThread::quit();
 	if (!QThread::wait(1000))
 	{
-		qWarning() << "Failed to stop the UsbDeviceEnumerator thread, force-terminating.";
+		mLogger.log("ERROR: Failed to stop the UsbDeviceEnumerator thread, force-terminating.");
 	}
 }
 
@@ -57,7 +59,8 @@ void UsbDeviceEnumerator::run()
 	}
 
 	// Set up the device tracking:
-	auto adbDevList = std::make_unique<AdbCommunicator>();
+	auto & devListLogger = mComponents.logger("UsbDeviceEnumerator-DevList");
+	auto adbDevList = std::make_unique<AdbCommunicator>(devListLogger);
 	adbDevList->moveToThread(this);
 	connect(adbDevList.get(), &AdbCommunicator::connected,        adbDevList.get(), &AdbCommunicator::trackDevices);
 	connect(adbDevList.get(), &AdbCommunicator::updateDeviceList, this,             &UsbDeviceEnumerator::updateDeviceList);
@@ -65,9 +68,9 @@ void UsbDeviceEnumerator::run()
 
 	// Also set up periodic device queries:
 	QTimer timer;
-	connect(&timer, &QTimer::timeout, this, [=]()
+	connect(&timer, &QTimer::timeout, this, [=, &devListLogger]()
 		{
-			auto adbDevLister = new AdbCommunicator;
+			auto adbDevLister = new AdbCommunicator(devListLogger);
 			adbDevLister->moveToThread(this);
 			connect(adbDevLister, &AdbCommunicator::updateDeviceList, this,         &UsbDeviceEnumerator::updateDeviceList);
 			connect(adbDevLister, &AdbCommunicator::connected,        adbDevLister, [=](){adbDevLister->listDevices();});
@@ -102,8 +105,8 @@ void UsbDeviceEnumerator::requestDeviceScreenshot(const QByteArray & aDeviceID)
 
 void UsbDeviceEnumerator::invRequestDeviceScreenshot(const QByteArray & aDeviceID)
 {
-	qDebug() << "Requesting screenshot from device " << aDeviceID;
-	auto adbScreenshotter = new AdbCommunicator();
+	mLogger.log("Requesting screenshot from device %1", aDeviceID);
+	auto adbScreenshotter = new AdbCommunicator(loggerForDevice(aDeviceID));
 	adbScreenshotter->moveToThread(this);
 	auto devID = aDeviceID;
 	connect(adbScreenshotter, &AdbCommunicator::connected,          adbScreenshotter, [=](){adbScreenshotter->assignDevice(devID);});
@@ -113,7 +116,7 @@ void UsbDeviceEnumerator::invRequestDeviceScreenshot(const QByteArray & aDeviceI
 	connect(adbScreenshotter, &AdbCommunicator::error, this,
 		[=](const QString & aErrorText)
 		{
-			qDebug() << "Device " << devID << " has failed to produce screenshot: " << aErrorText;
+			mLogger.log("Device %1  has failed to produce screenshot: %2.", devID, aErrorText);
 			mDevicesFailedScreenshot.insert(devID);
 		}
 	);
@@ -133,12 +136,12 @@ void UsbDeviceEnumerator::tryStartApp(const QByteArray & aDeviceID)
 		return;
 	}
 
-	qDebug() << "Attempting to start the app on device " << aDeviceID;
+	mLogger.log("Attempting to start the app on device %1.", aDeviceID);
 	mDetectionStatus[aDeviceID];
 
 	auto shellCmd = QString::fromUtf8("pm list packages cz.xoft.deskemes");
 	auto devID = aDeviceID;
-	auto appQuery = new AdbCommunicator();
+	auto appQuery = new AdbCommunicator(loggerForDevice(aDeviceID));
 	appQuery->moveToThread(this);
 	connect(appQuery, &AdbCommunicator::connected,         this, [=](){appQuery->assignDevice(devID);});
 	connect(appQuery, &AdbCommunicator::deviceAssigned,    this, [=](){appQuery->shellExecuteV1(shellCmd.toUtf8());});
@@ -151,7 +154,7 @@ void UsbDeviceEnumerator::tryStartApp(const QByteArray & aDeviceID)
 	connect(appQuery, &AdbCommunicator::error, this,
 		[this, devID](const QString & aErrorText)
 		{
-			qDebug() << "Error while checking for app: " << aErrorText;
+			mLogger.log("Error while checking on %1 for app: %2.", devID, aErrorText);
 			auto itr = mDetectionStatus.find(devID);
 			if (itr != mDetectionStatus.end())
 			{
@@ -175,7 +178,7 @@ void UsbDeviceEnumerator::tryStartApp(const QByteArray & aDeviceID)
 			}
 			else
 			{
-				qDebug() << "Device " << devID << " doesn't have the app installed.";
+				mLogger.log("Device %1 doesn't have the app installed.", devID);
 				auto dd = mComponents.get<DetectedDevices>();
 				dd->setDeviceStatus(mKind, devID, DetectedDevices::Device::dsNeedApp);
 				mDetectionStatus.erase(itr);
@@ -192,8 +195,8 @@ void UsbDeviceEnumerator::tryStartApp(const QByteArray & aDeviceID)
 
 void UsbDeviceEnumerator::setupPortReversingAndConnect(const QByteArray & aDeviceID)
 {
-	qDebug() << "Requesting port-reversing on device " << aDeviceID;
-	auto adbReverser = new AdbCommunicator();
+	mLogger.log("Requesting port-reversing on device %1.", aDeviceID);
+	auto adbReverser = new AdbCommunicator(loggerForDevice(aDeviceID));
 	adbReverser->moveToThread(this);
 	auto devID = aDeviceID;
 	connect(adbReverser, &AdbCommunicator::connected,                this,        [=](){adbReverser->assignDevice(devID);});
@@ -203,7 +206,7 @@ void UsbDeviceEnumerator::setupPortReversingAndConnect(const QByteArray & aDevic
 	connect(adbReverser, &AdbCommunicator::error,                    this,
 		[=](QString aErrorText)
 		{
-			qDebug() << "Port reversing setup on device " << devID << " failed: " << aErrorText;
+			mLogger.log("Port reversing setup on device %1 failed: %2", devID, aErrorText);
 			mComponents.get<DetectedDevices>()->setDeviceStatus(mKind, devID, DetectedDevices::Device::dsFailed);
 		}
 	);
@@ -216,7 +219,7 @@ void UsbDeviceEnumerator::setupPortReversingAndConnect(const QByteArray & aDevic
 
 void UsbDeviceEnumerator::startConnectionToApp(const QByteArray & aDeviceID)
 {
-	qDebug() << "Attempting to start the connection from the app on device " << aDeviceID;
+	mLogger.log("Attempting to start the connection from the app on device %1.", aDeviceID);
 
 	// Build the shell commandline with all our IPs that are not loopback:
 	auto shellCmd = QString::fromUtf8("am startservice -n cz.xoft.deskemes/.InitiateConnectionService --ei LocalPort %1 --ei Port %1 --es Addresses \"").arg(mTcpListenerPort);
@@ -238,7 +241,7 @@ void UsbDeviceEnumerator::startConnectionToApp(const QByteArray & aDeviceID)
 	shellCmd += "\"";
 
 	auto devID = aDeviceID;
-	auto appStarter = new AdbCommunicator();
+	auto appStarter = new AdbCommunicator(loggerForDevice(devID));
 	appStarter->moveToThread(this);
 	connect(appStarter, &AdbCommunicator::connected,      this, [=](){appStarter->assignDevice(devID);});
 	connect(appStarter, &AdbCommunicator::deviceAssigned, this, [=](){appStarter->shellExecuteV1(shellCmd.toUtf8());});
@@ -271,11 +274,20 @@ void UsbDeviceEnumerator::startConnectionToApp(const QByteArray & aDeviceID)
 	connect(appStarter, &AdbCommunicator::error, this,
 		[=](const QString & aErrorText)
 		{
-			qDebug() << "Error while starting connection by intent: " << aErrorText;
+			mLogger.log("Error while starting connection to %1 by intent: %2", devID, aErrorText);
 			mComponents.get<DetectedDevices>()->setDeviceStatus(mKind, devID, DetectedDevices::Device::dsFailed);
 		}
 	);
 	appStarter->start();
+}
+
+
+
+
+
+Logger & UsbDeviceEnumerator::loggerForDevice(const QString & aDeviceID)
+{
+	return mComponents.logger("UsbDeviceEnumerator-" + aDeviceID);
 }
 
 

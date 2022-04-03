@@ -157,6 +157,9 @@ protected:
 
 	/** All the devices, in no particular order, protected by mMtxDevices. */
 	DevicePtrMap mDevices;
+
+	/** The logger used for all messages produced by this class. */
+	Logger & mLogger;
 };
 
 Q_DECLARE_METATYPE(DetectedDevices::DevicePtr);

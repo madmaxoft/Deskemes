@@ -1,6 +1,7 @@
 #include "ComponentCollection.hpp"
 #include <cassert>
 #include <set>
+#include "MultiLogger.hpp"
 
 
 
@@ -21,12 +22,28 @@ ComponentCollection::ComponentCollection():
 void ComponentCollection::start()
 {
 	assert(!mIsStarted);
+	log("main", "Starting all components...");
 	auto order = componentsInStartOrder();
 	for (const auto & component: order)
 	{
 		component->start();
 	}
 	mIsStarted = true;
+	log("main", "All components started.");
+}
+
+
+
+
+
+Logger & ComponentCollection::logger(const QString & aName)
+{
+	auto multiLogger = get<MultiLogger>();
+	if (!multiLogger)
+	{
+		throw RuntimeError("There's no MultiLogger instance in this component collection");
+	}
+	return multiLogger->logger(aName);
 }
 
 
@@ -42,7 +59,7 @@ void ComponentCollection::addComponent(
 	if (itr != mComponents.end())
 	{
 		assert(!"Component of this kind is already present in the collection");
-		throw LogicError("Duplicate component in collection: %1", aKind);
+		throw LogicError(logger("main"), "Duplicate component in collection: %1", aKind);
 	}
 	mComponents[aKind] = aComponent;
 }
@@ -71,7 +88,7 @@ void ComponentCollection::requireForStart(ComponentCollection::ComponentKind aTh
 	assert(aThisComponent != aRequiredComponent);
 	if (mIsStarted)
 	{
-		throw LogicError("The ComponentCollection is already started.");
+		throw LogicError(logger("main"), "The ComponentCollection is already started.");
 	}
 	mStartRequirements[aThisComponent].push_back(aRequiredComponent);
 }
@@ -120,7 +137,7 @@ std::vector<ComponentCollection::ComponentBasePtr> ComponentCollection::componen
 		if (!hasAdded)
 		{
 			assert(!"Failed to calculate component start order");
-			throw LogicError("Failed to calculate component start order");
+			throw LogicError(logger("main"), "Failed to calculate component start order");
 		}
 	}
 	return res;

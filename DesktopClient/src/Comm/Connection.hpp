@@ -136,6 +136,9 @@ public:
 		const QByteArray & aServiceInitData = QByteArray()
 	);
 
+	/** Returns the logger used for this connection. */
+	Logger & logger() { return mLogger; }
+
 
 protected:
 
@@ -191,6 +194,9 @@ protected:
 
 	/** The mutex protecting mChannels against multithreaded access. */
 	QMutex mMtxChannels;
+
+	/** The logger used for all messages produced by this class. */
+	Logger & mLogger;
 
 
 	/** Checks whether the remote public key and ID pair is known.

@@ -61,6 +61,9 @@ protected:
 	/** The mutex protecting mConnections against multithreaded access. */
 	mutable QMutex mMtxConnections;
 
+	/** The logger used to log all messages produced by the class.. */
+	Logger & mLogger;
+
 
 	/** Returns the detected device status that best describes the connection's status. */
 	DetectedDevices::Device::Status deviceStatusFromConnection(const Connection & aConnection);

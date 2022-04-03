@@ -28,14 +28,14 @@ public:
 
 	public:
 		/** Creates a new instance, based on the SQL error reported for the command. */
-		SqlError(const QSqlError & aSqlError, const std::string & aSqlCommand);
+		SqlError(Logger & aLogger, const QSqlError & aSqlError, const std::string & aSqlCommand);
 	};
 
 
 	/** Upgrades the database to the latest known version.
 	Throws SqlError if the upgrade fails.
 	Tries its best to keep the DB in a usable state, even if the upgrade fails. */
-	static void upgrade(Database & aDB);
+	static void upgrade(Database & aDB, Logger & aLogger);
 
 	/** Returns the highest version that the upgrade knows (current version). */
 	static size_t currentVersion();
@@ -47,9 +47,11 @@ protected:
 	/** The SQL database on which to perform the upgrade. */
 	QSqlDatabase & mDB;
 
+	Logger & mLogger;
+
 
 	/** Creates a new instance of this object. */
-	DatabaseUpgrade(Database & aDB);
+	DatabaseUpgrade(Database & aDB, Logger & aLogger);
 
 	/** Performs the whole upgrade on m_DB. */
 	void execute();

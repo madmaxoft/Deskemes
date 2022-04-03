@@ -23,6 +23,13 @@ class DevicePairings:
 
 	Q_OBJECT
 
+
+protected:
+
+	/** The logger used for all messages produced by this class. */
+	Logger & mLogger;
+
+
 public:
 
 	/** Container for data of a single pairing. */

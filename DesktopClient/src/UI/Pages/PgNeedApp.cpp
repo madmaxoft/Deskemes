@@ -131,7 +131,7 @@ void PgNeedApp::tryInstallApp()
 void PgNeedApp::openBrowserWithAppWebPage()
 {
 	auto shellCmd = QString::fromUtf8("am start -a android.intent.action.VIEW -d %1").arg(APK_URL);
-	auto adbComm = new AdbCommunicator;
+	auto adbComm = new AdbCommunicator(mComponents.logger("Adb-OpenBrowser"));
 	connect(adbComm, &AdbCommunicator::connected,      this,    [=](){ adbComm->assignDevice(mParent.device()->enumeratorDeviceID()); });
 	connect(adbComm, &AdbCommunicator::deviceAssigned, this,    [=](){ adbComm->shellExecuteV1(shellCmd.toUtf8()); });
 	connect(adbComm, &AdbCommunicator::disconnected,   adbComm, &AdbCommunicator::deleteLater);

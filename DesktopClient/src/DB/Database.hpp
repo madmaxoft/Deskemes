@@ -12,6 +12,13 @@
 
 
 
+// fwd:
+class Logger;
+
+
+
+
+
 /** The storage for all data that is persisted across sessions.
 The database file stores all user data and provides encryption / decryption.
 Clients of this class take the SQL connection and issue their own queries on the database. */
@@ -89,6 +96,9 @@ protected:
 
 	/** The mutex that is used to sequentialize access to the database / DBConnection. */
 	QMutex mMtxConnection;
+
+	/** The logger used for the DB operations. */
+	Logger & mLogger;
 
 
 	/** Returns the internal QSqlDatabase object. */

@@ -25,7 +25,7 @@ class AdbCommunicator:
 public:
 
 	/** Creates a new instance of a communicator. */
-	AdbCommunicator(QObject * aParent = nullptr);
+	explicit AdbCommunicator(Logger & aLogger);
 
 
 public Q_SLOTS:
@@ -158,6 +158,9 @@ protected:
 	uint32_t mFramebufferSize;    // bytes
 	uint32_t mFramebufferWidth;   // pixels
 	uint32_t mFramebufferHeight;  // pixels
+
+	/** The logger used for all messages produced by this class. */
+	Logger & mLogger;
 
 
 	/** Writes the hex4-formatted length and then the message to the connection. */

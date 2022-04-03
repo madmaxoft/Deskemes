@@ -189,6 +189,7 @@ set(SOURCES
 	src/Device.cpp
 	src/DeviceMgr.cpp
 	src/InstallConfiguration.cpp
+	src/Logger.cpp
 	src/main.cpp
 	src/MultiLogger.cpp
 	src/Settings.cpp
@@ -241,6 +242,7 @@ set(HEADERS
 	src/DeviceMgr.hpp
 	src/Exception.hpp
 	src/InstallConfiguration.hpp
+	src/Logger.hpp
 	src/MultiLogger.hpp
 	src/Optional.hpp
 	src/Settings.hpp

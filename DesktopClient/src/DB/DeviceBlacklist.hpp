@@ -21,6 +21,12 @@ class DeviceBlacklist:
 	Q_OBJECT
 
 
+protected:
+
+	/** The logger used for all messages produced by this class. */
+	Logger & mLogger;
+
+
 public:
 
 	DeviceBlacklist(ComponentCollection & aComponents);

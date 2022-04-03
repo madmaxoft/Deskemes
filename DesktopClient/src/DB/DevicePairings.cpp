@@ -12,7 +12,8 @@
 
 
 DevicePairings::DevicePairings(ComponentCollection & aComponents):
-	ComponentSuper(aComponents)
+	ComponentSuper(aComponents),
+	mLogger(aComponents.logger("DevicePairings"))
 {
 	requireForStart(ComponentCollection::ckDatabase);
 }
@@ -23,12 +24,13 @@ DevicePairings::DevicePairings(ComponentCollection & aComponents):
 
 void DevicePairings::start()
 {
+	mLogger.log("Starting...");
 	auto db = mComponents.get<Database>();
 	auto conn = db->connection();
 	auto query = conn.query("SELECT * FROM DevicePairings");
 	if (!query.exec())
 	{
-		qWarning() << "Cannot exec statement: " << query.lastError();
+		mLogger.log("ERROR: Cannot exec start statement: %1.", query.lastError());
 		assert(!"DB error");
 		return;
 	}
@@ -43,8 +45,7 @@ void DevicePairings::start()
 	{
 		if (rec.indexOf(fieldName) == -1)
 		{
-			qWarning() << "DevicePairings database is broken, missing field " << fieldName;
-			throw RuntimeError("DevicePairings database is broken, missing field %1.", fieldName);
+			throw RuntimeError(mLogger, "DevicePairings database is broken, missing field %1.", fieldName);
 		}
 	}
 }
@@ -55,21 +56,24 @@ void DevicePairings::start()
 
 Optional<DevicePairings::Pairing> DevicePairings::lookupDevice(const QByteArray & aDevicePublicID)
 {
+	mLogger.log("Looking up device %1...", aDevicePublicID);
 	auto db = mComponents.get<Database>();
 	auto conn = db->connection();
 	auto query = conn.query("SELECT * FROM DevicePairings WHERE DeviceID = ?");
 	query.addBindValue(aDevicePublicID);
 	if (!query.exec())
 	{
-		qWarning() << "Cannot exec statement: " << query.lastError();
+		mLogger.log("ERROR: Cannot exec lookup statement: %1.", query.lastError());
 		assert(!"DB error");
 		return {};
 	}
 	if (!query.next())
 	{
 		// No such DeviceID in the DB
+		mLogger.log("Device %1 is not paired.", aDevicePublicID);
 		return {};
 	}
+	mLogger.log("Device %1 found, returning data.", aDevicePublicID);
 	return Pairing
 	{
 		query.value("DeviceID").toByteArray(),
@@ -114,6 +118,11 @@ void DevicePairings::pairDevice(
 		query.addBindValue(aLocalPrivateKeyData);
 		query.exec();
 	}
+	mLogger.log("Added new device pairing for device \"%1\":", aFriendlyName);
+	mLogger.logHex(aDevicePublicID, "DevicePublicID");
+	mLogger.logHex(aDevicePublicKeyData, "DevicePublicKeyData");
+	mLogger.logHex(aLocalPublicKeyData, "LocalPublicKeyData");
+	mLogger.logHex(aLocalPrivateKeyData, "LocalPrivateKeyData");  // TODO: Should we log this potentially sensitive information?
 }
 
 
@@ -125,12 +134,12 @@ void DevicePairings::createLocalKeyPair(const QByteArray & aDevicePublicID, cons
 	auto oldPairing = lookupDevice(aDevicePublicID);
 	if (oldPairing.isPresent())
 	{
-		qDebug() << "Device " << aFriendlyName << " already has a keypair. Ignoring creation request.";
+		mLogger.log("Device \"%1\" already has a keypair. Ignoring creation request.", aFriendlyName);
 		return;
 	}
 
 	// Generate a new keypair
-	qDebug() << "Generating keypair...";
+	mLogger.log("Generating keypair for device \"%1\"...", aFriendlyName);
 	RsaPrivateKey rpk;
 	#ifdef _DEBUG
 		// Generating is very slow in debug builds, use shorter keys
@@ -140,7 +149,7 @@ void DevicePairings::createLocalKeyPair(const QByteArray & aDevicePublicID, cons
 	#endif
 	auto pubKeyData  = QByteArray::fromStdString(rpk.getPubKeyDER());
 	auto privKeyData = QByteArray::fromStdString(rpk.getPrivKeyDER());
-	qDebug() << "Keypair generated.";
+	mLogger.log("Keypair for device \"%1\" generated.", aFriendlyName);
 
 	// Save the new keypair to the DB
 	auto db = mComponents.get<Database>();
@@ -152,7 +161,7 @@ void DevicePairings::createLocalKeyPair(const QByteArray & aDevicePublicID, cons
 	query.addBindValue(privKeyData);
 	if (!query.exec())
 	{
-		qWarning() << "Cannot exec statement: " << query.lastError();
+		mLogger.log("ERROR: Cannot store generated keypair for device \"%1\" to DB, statement failed: %2", aFriendlyName, query.lastError());
 		assert(!"DB error");
 	}
 }

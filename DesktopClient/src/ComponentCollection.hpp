@@ -143,6 +143,16 @@ public:
 	/** Starts all the components, in a topological order. */
 	void start();
 
+	/** Returns a logger for the specified subsystem name. */
+	Logger & logger(const QString & aName);
+
+	/** Logs directly to the specified logger. */
+	template <typename... T>
+	void log(const QString & aLoggerName, const QString & aFormatString, const T &... aArgs)
+	{
+		logger(aLoggerName).log(aFormatString, aArgs...);
+	}
+
 
 protected:
 

@@ -77,7 +77,7 @@ public:
 			{
 				aChannel->mChannelID = Utils::readBE16(aAdditionalData);
 				aChannel->mIsOpen = true;
-				qDebug() << "Channel " << serviceName << " acknowledged by the device.";
+				mConnection.logger().log("Channel \"%1\" acknowledged by the device.", serviceName);
 				emit channelAcknowledged(aChannel);
 				emit aChannel->opened(aChannel.get());
 			},
@@ -350,7 +350,7 @@ protected:
 		Q_UNUSED(aRoundtripMsec);
 
 		// TODO: Store and process the value
-		// qDebug() << "Ping received in " << aRoundtripMsec << " msec";
+		// mLogger.log("Ping received in %1 msec.", aRoundtripMsec);
 	}
 
 
@@ -367,9 +367,9 @@ private slots:
 				Q_UNUSED(aAdditionalData);
 				this->pingReceived(QDateTime::currentMSecsSinceEpoch() - now);
 			},
-			[](const quint16 aErrorCode, const QByteArray & aErrorMessage)
+			[=](const quint16 aErrorCode, const QByteArray & aErrorMessage)
 			{
-				qDebug() << "Ping request returned an error: " << aErrorCode << "; " << aErrorMessage;
+				mConnection.logger().log("Ping request returned an error: %1; %2", aErrorCode, aErrorMessage);
 			},
 			QString::number(numPings++).toUtf8()
 		);
@@ -432,14 +432,15 @@ Connection::Connection(
 	mState(csInitial),
 	mHasReceivedIdentification(false),
 	mRemoteVersion(0),
-	mHasSentStartTls(false)
+	mHasSentStartTls(false),
+	mLogger(aComponents.logger("Connection-" + aConnectionID))
 {
 	connect(aIO, &QIODevice::readyRead,           this, &Connection::ioReadyRead);
 	connect(aIO, &QIODevice::aboutToClose,        this, &Connection::ioClosing);
 	connect(aIO, &QIODevice::readChannelFinished, this, &Connection::ioClosing);
 
 	// Send the protocol identification:
-	qDebug() << "Sending protocol identification";
+	mLogger.log("Sending protocol identification...");
 	QByteArray protocolIdent("Deskemes");
 	Utils::writeBE16(protocolIdent, 1);  // version
 	sendCleartextMessage("dsms"_4cc, protocolIdent);
@@ -537,7 +538,7 @@ void Connection::sendLocalPublicKey()
 	auto pairing = mComponents.get<DevicePairings>()->lookupDevice(mRemotePublicID.value());
 	assert(pairing.isPresent());
 
-	qDebug() << "Sending public key data";
+	mLogger.log("Sending public key data");
 	sendCleartextMessage("pubk"_4cc, pairing.value().mLocalPublicKeyData);
 }
 
@@ -547,7 +548,7 @@ void Connection::sendLocalPublicKey()
 
 void Connection::sendPairingRequest()
 {
-	qDebug() << "Sending pairing request";
+	mLogger.log("Sending pairing request");
 	sendCleartextMessage("pair"_4cc);
 }
 
@@ -599,7 +600,7 @@ bool Connection::openChannel(
 {
 	if (mState != csEncrypted)
 	{
-		qWarning() << "Invalid protocol state";
+		mLogger.log("Invalid protocol state, %1 instead of %2 (encrypted).", mState, csEncrypted);
 		return false;
 	}
 	auto ch0 = channelZero();
@@ -708,7 +709,7 @@ void Connection::processIncomingData(const QByteArray & aData)
 		case csDisconnected:
 		{
 			// Probably some leftover data from the connection, don't know how to handle it, so drop it:
-			qDebug() << "Received data while disconnected: " << aData;
+			mLogger.logHex(aData, "Received data while disconnected, ignoring.");
 			break;
 		}
 	}
@@ -746,12 +747,11 @@ bool Connection::extractAndHandleCleartextMessage()
 
 void Connection::handleCleartextMessage(const quint32 aMsgType, const QByteArray & aMsg)
 {
-	// DEBUG:
-	qDebug() << "Received cleartext message " << Utils::writeBE32(aMsgType);
+	mLogger.log("Received cleartext message \"%1\".", Utils::writeBE32(aMsgType));
 
 	if (!mHasReceivedIdentification && (aMsgType != "dsms"_4cc))
 	{
-		qDebug() << "Didn't receive an identification message first; instead got " << Utils::writeBE32(aMsgType);
+		mLogger.log("Didn't receive an identification message first; instead got \"%1\".", Utils::writeBE32(aMsgType));
 		terminate();
 		return;
 	}
@@ -794,7 +794,7 @@ void Connection::handleCleartextMessage(const quint32 aMsgType, const QByteArray
 		}
 		default:
 		{
-			qDebug() << "Unknown message received: " << Utils::writeBE32(aMsgType);
+			mLogger.log("Unknown message received: \"%1\".", Utils::writeBE32(aMsgType));
 			terminate();
 			break;
 		}
@@ -809,13 +809,13 @@ void Connection::handleCleartextMessageDsms(const QByteArray & aMsg)
 {
 	if (aMsg.size() < 10)
 	{
-		qDebug() << "Received a too short protocol identification: " << aMsg.size() << " bytes";
+		mLogger.log("ERROR: Received a too short protocol identification: %1 bytes.", aMsg.size());
 		terminate();
 		return;
 	}
 	if (!aMsg.startsWith("Deskemes"))
 	{
-		qDebug() << "Received an invalid protocol identification";
+		mLogger.log("ERROR: Received an invalid protocol identification");
 		terminate();
 		return;
 	}
@@ -845,7 +845,7 @@ void Connection::handleCleartextMessageStls()
 		!mRemotePublicKeyData.isPresent()
 	)
 	{
-		qDebug() << "Remote asked for TLS, but hasn't provided PublicID or PublicKey, aborting connection";
+		mLogger.log("ERROR: Remote asked for TLS, but hasn't provided PublicID or PublicKey, aborting connection");
 		terminate();
 		return;
 	}
@@ -855,7 +855,7 @@ void Connection::handleCleartextMessageStls()
 	{
 		sendCleartextMessage("stls"_4cc);
 	}
-	qDebug() << "Received a TLS request, upgrading to TLS";
+	mLogger.log("Received a TLS request, upgrading to TLS");
 
 	// TODO: Add an actual TLS filter
 
@@ -889,13 +889,12 @@ void Connection::sendCleartextMessage(quint32 aMsgType, const QByteArray & aMsg)
 {
 	if (mHasSentStartTls)
 	{
-		qWarning() << "Trying to send message " << Utils::writeBE32(aMsgType) << " when TLS start has already been requested.";
+		mLogger.log("Trying to send message \"%1\" when TLS start has already been requested.", Utils::writeBE32(aMsgType));
 		assert(!"TLS start has already been requested");
 		return;
 	}
 
-	// DEBUG:
-	qDebug() << "Sending cleartext message " << Utils::writeBE32(aMsgType);
+	mLogger.log("Sending cleartext message \"%1\".", Utils::writeBE32(aMsgType));
 
 	QByteArray packet = Utils::writeBE32(aMsgType);
 	Utils::writeBE16Lstring(packet, aMsg);
@@ -926,7 +925,7 @@ bool Connection::extractAndHandleMuxMessage()
 	auto channel = channelByID(channelID);
 	if (channel == nullptr)
 	{
-		qWarning() << "Message received for non-existent channel " << channelID;
+		mLogger.log("Message received for non-existent channel \"%1\".", channelID);
 		return true;
 	}
 	channel->processIncomingMessage(mIncomingData.mid(4, msgLen));
@@ -975,6 +974,7 @@ void Connection::addChannel(const quint16 aChannelID, Connection::ChannelPtr aCh
 
 void Connection::sendChannelMessage(const quint16 aChannelID, const QByteArray & aMessage)
 {
+	mLogger.logHex(aMessage, "Sending message to channel #%1", aChannelID);
 	QByteArray buf;
 	Utils::writeBE16(buf, aChannelID);
 	Utils::writeBE16Lstring(buf, aMessage);
@@ -1000,7 +1000,7 @@ void Connection::ioReadyRead()
 		}
 		else if (numBytes < 0)
 		{
-			qDebug() << "Reading from IO failed";
+			mLogger.log("ERROR: Reading from IO failed: %1", numBytes);
 			ioClosing();
 			return;
 		}
@@ -1014,7 +1014,7 @@ void Connection::ioReadyRead()
 
 void Connection::ioClosing()
 {
-	qDebug() << "Disconnected";
+	mLogger.log("Disconnected");
 	setState(csDisconnected);
 	emit disconnected(this);
 

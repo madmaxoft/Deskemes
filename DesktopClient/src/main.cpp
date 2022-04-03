@@ -124,6 +124,7 @@ int main(int argc, char *argv[])
 		auto blacklist       = cc.addNew<DeviceBlacklist>();
 		auto usbEnumerator   = cc.addNew<UsbDeviceEnumerator>();
 		auto detectedDevices = cc.addNew<DetectedDevices>();
+		auto & logger = multiLogger->mainLogger();
 
 		// Start the components:
 		cc.start();
@@ -136,16 +137,20 @@ int main(int argc, char *argv[])
 		}
 		else
 		{
+			logger.log("MainWindowVisible setting is false, running hidden.");
 			w.hide();
 		}
 
 		// Run the app:
+		logger.log("Running the app...");
 		auto res = app.exec();
 
 		// Stop all background tasks:
+		logger.log("Stopping all...");
 		BackgroundTasks::get().stopAll();
 		listener->stop();
 		connMgr->stop();
+		logger.log("Done.");
 
 		return res;
 	}

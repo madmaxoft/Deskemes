@@ -126,10 +126,11 @@ static QByteArray loadAdbPubKeyFile()
 ////////////////////////////////////////////////////////////////////////////////
 // AdbCommunicator:
 
-AdbCommunicator::AdbCommunicator(QObject * aParent):
-	Super(aParent),
+AdbCommunicator::AdbCommunicator(Logger & aLogger):
+	Super(nullptr),
 	mState(csCreated),
-	mFramebufferSize(0)
+	mFramebufferSize(0),
+	mLogger(aLogger)
 {
 }
 
@@ -159,7 +160,7 @@ void AdbCommunicator::listDevices()
 {
 	assert(mState == csReady);
 	mState = csListingDevicesStart;
-	qDebug() << "Requesting device list";
+	mLogger.log("Requesting device list...");
 	writeHex4("host:devices");
 	/*
 	Expected response:
@@ -177,7 +178,7 @@ void AdbCommunicator::trackDevices()
 {
 	assert(mState == csReady);
 	mState = csTrackingDevicesStart;
-	qDebug() << "Requesting device list";
+	mLogger.log("Requesting device tracking...");
 	writeHex4("host:track-devices");
 	/*
 	Expected response:
@@ -196,6 +197,7 @@ void AdbCommunicator::trackDevices()
 
 void AdbCommunicator::assignDevice(const QByteArray & aDeviceID)
 {
+	mLogger.log("Assigning device %1.", aDeviceID);
 	switch (mState)
 	{
 		case csReady:
@@ -238,6 +240,7 @@ void AdbCommunicator::takeScreenshot()
 		case csScreenshotting:
 		{
 			// We're already screenshotting, request another one
+			mLogger.logHex("s", "Writing data");
 			mSocket.write("s");
 			break;
 		}
@@ -256,7 +259,7 @@ void AdbCommunicator::takeScreenshot()
 
 void AdbCommunicator::portReverse(quint16 aDevicePort, quint16 aLocalPort)
 {
-	qDebug() << "Setting up port-reversing";
+	mLogger.log("Setting up port-reversing...");
 	assert(mState == csDeviceAssigned);
 	writeHex4(QString::fromUtf8("reverse:forward:tcp:%1;tcp:%2").arg(aDevicePort).arg(aLocalPort).toUtf8());
 	mState = csPortReversing;
@@ -268,7 +271,7 @@ void AdbCommunicator::portReverse(quint16 aDevicePort, quint16 aLocalPort)
 
 void AdbCommunicator::shellExecuteV1(const QByteArray & aCommand)
 {
-	qDebug() << "Sending V1 shell command " << aCommand;
+	mLogger.log("Sending V1 shell command: \"%1\".", aCommand);
 	assert(mState == csDeviceAssigned);
 	writeHex4("shell:" + aCommand);
 	mState = csExecutingShellV1;
@@ -302,8 +305,9 @@ void AdbCommunicator::writeHex4(const QByteArray & aMessage)
 	auto len = aMessage.length();
 	assert(len <= std::numeric_limits<uint16_t>::max());
 	auto hex4 = numberToHex4(static_cast<uint16_t>(len));
-	mSocket.write(hex4);
-	mSocket.write(aMessage);
+	auto msg = hex4 + aMessage;
+	mLogger.logHex(msg, "Writing data");
+	mSocket.write(msg);
 }
 
 
@@ -323,13 +327,13 @@ void AdbCommunicator::parseDeviceList(const QByteArray & aMessage)
 		auto parts = line.split('\t');
 		if (parts.size() < 2)
 		{
-			qDebug() << "Bad DeviceList line received: " << line;
+			mLogger.logHex(line, "ERROR: Bad DeviceList line received");
 			continue;
 		}
 		if (parts[0].size() < 8)
 		{
 			// Suspiciously short ID
-			qDebug() << "Bad DeviceList ID received in line " << line;
+			mLogger.logHex(line, "ERROR: Suspiciously short DeviceID received in line");
 			continue;
 		}
 		const auto & status = parts[1];
@@ -346,6 +350,7 @@ void AdbCommunicator::parseDeviceList(const QByteArray & aMessage)
 			otherIDs.push_back(parts[0]);
 		}
 	}
+	mLogger.log("Updating device list: %1 online, %2 unauth, %3 otherIDs.", onlineIDs.size(), unauthIDs.size(), otherIDs.size());
 	Q_EMIT updateDeviceList(onlineIDs, unauthIDs, otherIDs);
 }
 
@@ -375,6 +380,7 @@ bool AdbCommunicator::extractOkayOrFail()
 		}
 		auto err = mIncomingData.mid(8, length);
 		mIncomingData = mIncomingData.mid(length + 8);
+		mLogger.log("Received an error: %1.", err);
 		Q_EMIT error(QString::fromUtf8(err));
 		return false;
 	}
@@ -387,6 +393,7 @@ bool AdbCommunicator::extractOkayOrFail()
 	{
 		mState = csBroken;
 		mSocket.abort();
+		mLogger.log("ERROR: Malformed response received from ADB server.");
 		Q_EMIT error(tr("Malformed response received from ADB server"));
 		return false;
 	}
@@ -455,10 +462,11 @@ void AdbCommunicator::onSocketError(QAbstractSocket::SocketError aError)
 		return;
 	}
 
-	qDebug() << "Socket error: " << mSocket.errorString();
+	auto err = mSocket.errorString();
+	mLogger.log("Socket error: %1.", err);
 	mState = csBroken;
 	mSocket.abort();
-	Q_EMIT error(tr("Error on the underlying TCP socket: %1").arg(mSocket.errorString()));
+	Q_EMIT error(tr("Error on the underlying TCP socket: %1").arg(err));
 }
 
 
@@ -467,7 +475,7 @@ void AdbCommunicator::onSocketError(QAbstractSocket::SocketError aError)
 
 void AdbCommunicator::onSocketDisconnected()
 {
-	qDebug() << "Socket disconnected: " << mSocket.errorString();
+	mLogger.log("Socket disconnected: %1.", mSocket.errorString());
 	mState = csBroken;
 	mSocket.abort();
 	Q_EMIT disconnected();
@@ -487,7 +495,7 @@ void AdbCommunicator::onSocketReadyRead()
 		{
 			break;
 		}
-		qDebug() << "Received data: " << dataRead.size() << " bytes: " << dataRead;
+		mLogger.logHex(dataRead, "Received data");
 		mIncomingData.append(dataRead);
 	}
 
@@ -565,7 +573,7 @@ void AdbCommunicator::onSocketReadyRead()
 
 			case csDeviceAssigned:
 			{
-				qDebug() << "Unexpected packet received";
+				mLogger.log("Unexpected packet received in csDeviceAssigned state.");
 				break;
 			}
 

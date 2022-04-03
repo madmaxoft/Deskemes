@@ -96,7 +96,6 @@ protected:
 	std::atomic<bool> mShouldTerminate;
 
 
-
 	BackgroundTasks();
 
 	~BackgroundTasks();

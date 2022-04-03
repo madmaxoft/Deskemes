@@ -54,6 +54,9 @@ protected:
 	/** Protects mDevices against multithreaded access. */
 	mutable QMutex mMtx;
 
+	/** The logger instance used for logging DevMgr-related stuff. */
+	Logger & mLogger;
+
 
 Q_SIGNALS:
 

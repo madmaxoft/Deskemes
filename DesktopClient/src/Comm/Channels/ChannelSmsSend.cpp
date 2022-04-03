@@ -16,6 +16,7 @@ ChannelSmsSend::ChannelSmsSend(Connection & aConnection):
 
 void ChannelSmsSend::sendSms(const QString & aRecipient, const QString & aText)
 {
+	mConnection.logger().log("Sending an sms, recipient = \"%1\", text = \"%2\".", aRecipient, aText);
 	QByteArray msg;
 	msg.append("send");
 	Utils::writeBE16Lstring(msg, aRecipient.toUtf8());
@@ -35,7 +36,7 @@ std::vector<QString> ChannelSmsSend::divideMessage(const QString & aText)
 	sendMessage(msg);
 
 	// TODO: Wait for result
-	qDebug() << "TODO";
+	mConnection.logger().log("ChannelSmsSend::divideMessage(): NOT IMPLEMENTED YET");
 
 	return {};
 }

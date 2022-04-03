@@ -60,7 +60,7 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Cannot initialize the DB keys: %1</source>
+        <source>Failed to turn on foreign keys: %1</source>
         <translation type="unfinished"></translation>
     </message>
 </context>

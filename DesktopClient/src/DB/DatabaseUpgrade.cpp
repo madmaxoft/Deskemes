@@ -2,7 +2,6 @@
 #include <vector>
 #include <QSqlError>
 #include <QSqlRecord>
-#include <QDebug>
 #include "Database.hpp"
 
 
@@ -20,17 +19,17 @@ public:
 
 
 	/** Applies this upgrade script to the specified DB, and updates its version to a_Version. */
-	void apply(QSqlDatabase & aDB, size_t aVersion) const
+	void apply(QSqlDatabase & aDB, size_t aVersion, Logger & aLogger) const
 	{
-		qDebug() << "Executing DB upgrade script to version " << aVersion;
+		aLogger.log("Executing DB upgrade script to version %1.", aVersion);
 
 		// Temporarily disable FKs:
 		{
 			auto query = aDB.exec("pragma foreign_keys = off");
 			if (query.lastError().type() != QSqlError::NoError)
 			{
-				qWarning() << "SQL query failed: " << query.lastError();
-				throw DatabaseUpgrade::SqlError(query.lastError(), query.lastQuery().toStdString());
+				aLogger.log("ERROR: Disabling FKs failed: \"%1\".", query.lastError());
+				throw DatabaseUpgrade::SqlError(aLogger, query.lastError(), query.lastQuery().toStdString());
 			}
 		}
 
@@ -39,8 +38,8 @@ public:
 			auto query = aDB.exec("begin");
 			if (query.lastError().type() != QSqlError::NoError)
 			{
-				qWarning() << "SQL query failed: " << query.lastError();
-				throw DatabaseUpgrade::SqlError(query.lastError(), query.lastQuery().toStdString());
+				aLogger.log("ERROR: Starting an SQL transaction failed: \"%1\".", query.lastError());
+				throw DatabaseUpgrade::SqlError(aLogger, query.lastError(), query.lastQuery().toStdString());
 			}
 		}
 
@@ -50,9 +49,8 @@ public:
 			auto query = aDB.exec(QString::fromStdString(cmd));
 			if (query.lastError().type() != QSqlError::NoError)
 			{
-				qWarning() << "SQL upgrade command failed: " << query.lastError();
-				qDebug() << "  ^-- command: " << cmd.c_str();
-				throw DatabaseUpgrade::SqlError(query.lastError(), cmd);
+				aLogger.log("ERROR: SQL upgrade command failed. Command = \"%1\", error = \"%2\".", cmd, query.lastError());
+				throw DatabaseUpgrade::SqlError(aLogger, query.lastError(), cmd);
 			}
 		}
 
@@ -61,8 +59,8 @@ public:
 			auto query = aDB.exec(QString("UPDATE Version SET Version = %1").arg(aVersion));
 			if (query.lastError().type() != QSqlError::NoError)
 			{
-				qWarning() << "SQL transaction commit failed: " << query.lastError();
-				throw DatabaseUpgrade::SqlError(query.lastError(), query.lastQuery().toStdString());
+				aLogger.log("ERROR: updating DB version failed: \"%1\".", query.lastError());
+				throw DatabaseUpgrade::SqlError(aLogger, query.lastError(), query.lastQuery().toStdString());
 			}
 		}
 
@@ -71,8 +69,8 @@ public:
 			auto query = aDB.exec("pragma check_foreign_keys");
 			if (query.lastError().type() != QSqlError::NoError)
 			{
-				qWarning() << "SQL transaction commit failed: " << query.lastError();
-				throw DatabaseUpgrade::SqlError(query.lastError(), query.lastQuery().toStdString());
+				aLogger.log("ERROR: Checking FKs failed: \"%1\".", query.lastError());
+				throw DatabaseUpgrade::SqlError(aLogger, query.lastError(), query.lastQuery().toStdString());
 			}
 		}
 
@@ -81,8 +79,8 @@ public:
 			auto query = aDB.exec("commit");
 			if (query.lastError().type() != QSqlError::NoError)
 			{
-				qWarning() << "SQL transaction commit failed: " << query.lastError();
-				throw DatabaseUpgrade::SqlError(query.lastError(), query.lastQuery().toStdString());
+				aLogger.log("ERROR: SQL transaction commit failed: \"%1\".", query.lastError());
+				throw DatabaseUpgrade::SqlError(aLogger, query.lastError(), query.lastQuery().toStdString());
 			}
 		}
 
@@ -91,8 +89,8 @@ public:
 			auto query = aDB.exec("pragma foreign_keys = on");
 			if (query.lastError().type() != QSqlError::NoError)
 			{
-				qWarning() << "SQL query failed: " << query.lastError();
-				throw DatabaseUpgrade::SqlError(query.lastError(), query.lastQuery().toStdString());
+				aLogger.log("ERROR: Enabling FKs failed: \"%1\".", query.lastError());
+				throw DatabaseUpgrade::SqlError(aLogger, query.lastError(), query.lastQuery().toStdString());
 			}
 		}
 	}
@@ -152,8 +150,9 @@ static const std::vector<VersionScript> g_VersionScripts =
 ////////////////////////////////////////////////////////////////////////////////
 // DatabaseUpgrade:
 
-DatabaseUpgrade::DatabaseUpgrade(Database & aDB):
-	mDB(aDB.database())
+DatabaseUpgrade::DatabaseUpgrade(Database & aDB, Logger & aLogger):
+	mDB(aDB.database()),
+	mLogger(aLogger)
 {
 }
 
@@ -161,9 +160,9 @@ DatabaseUpgrade::DatabaseUpgrade(Database & aDB):
 
 
 
-void DatabaseUpgrade::upgrade(Database & aDB)
+void DatabaseUpgrade::upgrade(Database & aDB, Logger & aLogger)
 {
-	DatabaseUpgrade upg(aDB);
+	DatabaseUpgrade upg(aDB, aLogger);
 	return upg.execute();
 }
 
@@ -183,22 +182,23 @@ size_t DatabaseUpgrade::currentVersion()
 void DatabaseUpgrade::execute()
 {
 	auto version = getVersion();
-	qDebug() << "DB is at version " << version;
+	mLogger.log("DB is at version %1, program DB version is %2", version, g_VersionScripts.size());
 	bool hasUpgraded = false;
 	for (auto i = version; i < g_VersionScripts.size(); ++i)
 	{
-		qWarning() << "Upgrading DB to version" << i + 1;
-		g_VersionScripts[i].apply(mDB, i + 1);
+		mLogger.log("Upgrading DB to version %1", i + 1);
+		g_VersionScripts[i].apply(mDB, i + 1, mLogger);
 		hasUpgraded = true;
 	}
 
 	// After upgrading, vacuum the leftover space:
 	if (hasUpgraded)
 	{
+		mLogger.log("Vacuuming the DB");
 		auto query = mDB.exec("VACUUM");
 		if (query.lastError().type() != QSqlError::NoError)
 		{
-			throw SqlError(query.lastError(), "VACUUM");
+			throw SqlError(mLogger, query.lastError(), "VACUUM");
 		}
 	}
 }
@@ -224,7 +224,11 @@ size_t DatabaseUpgrade::getVersion()
 ////////////////////////////////////////////////////////////////////////////////
 // DatabaseUpgrade::SqlError:
 
-DatabaseUpgrade::SqlError::SqlError(const QSqlError & aSqlError, const std::string & aSqlCommand):
-	Super("Failed to upgrade database: %1 (command \"%2\")", aSqlError, aSqlCommand)
+DatabaseUpgrade::SqlError::SqlError(
+	Logger & aLogger,
+	const QSqlError & aSqlError,
+	const std::string & aSqlCommand
+):
+	Super(aLogger, "Failed to upgrade database: %1 (command \"%2\")", aSqlError, aSqlCommand)
 {
 }

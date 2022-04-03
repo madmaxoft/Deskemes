@@ -183,7 +183,7 @@ void InfoChannel::setValue(const quint32 aKey, QVariant && aValue)
 #define NEED_BYTES(N) \
 	if (i + N > len) \
 	{ \
-		qDebug() << "Value has been cut off, need " << N << " bytes, got " << len - i; \
+		mConnection.logger().log("ERROR: Value has been cut off, need %1 bytes, got %2.", N, len - i); \
 		return; \
 	}
 
@@ -195,6 +195,7 @@ void InfoChannel::processIncomingMessage(const QByteArray & aMessage)
 		if (i + 6 >= len)
 		{
 			// Not enough bytes for the smallest possible value
+			mConnection.logger().log("ERROR: Not enough bytes for even the smallest value.");
 			return;
 		}
 		auto valueKey = Utils::readBE32(aMessage, i);
@@ -249,7 +250,7 @@ void InfoChannel::processIncomingMessage(const QByteArray & aMessage)
 				auto stringLen = Utils::readBE16(aMessage, i);
 				if (i + stringLen + 2 > len)
 				{
-					qDebug() << "String value cut off, need " << stringLen << " bytes, got " << len - i;
+					mConnection.logger().log("ERROR: String value cut off, need %1 bytes, got %2.", stringLen, len - i);
 					return;
 				}
 				setValue(valueKey, aMessage.mid(i + 2, stringLen));
@@ -259,7 +260,7 @@ void InfoChannel::processIncomingMessage(const QByteArray & aMessage)
 			default:
 			{
 				// We cannot continue parsing this message, we don't know how large the value is
-				qWarning() << "Unknown value datatype: " << static_cast<int>(aMessage[i + 4]);
+				mConnection.logger().log("ERROR: Unknown value datatype: %1." , static_cast<int>(aMessage[i + 4]));
 				return;
 			}
 		}

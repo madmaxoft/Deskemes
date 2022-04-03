@@ -13,7 +13,8 @@
 
 TcpListener::TcpListener(ComponentCollection & aComponents, QObject * aParent):
 	Super(aParent),
-	ComponentSuper(aComponents)
+	ComponentSuper(aComponents),
+	mLogger(aComponents.logger("TcpListener"))
 {
 	connect(&mServer, &QTcpServer::newConnection, this, &TcpListener::newConnection);
 }
@@ -27,9 +28,10 @@ void TcpListener::start()
 	assert(!mServer.isListening());  // Not started yet
 	if (!mServer.listen(QHostAddress::Any, 24816))
 	{
-		qDebug() << "Failed to listen on preferred port 24816, attempting any port";
+		mLogger.log("ERROR: Failed to listen on preferred port 24816, attempting any port");
 		mServer.listen();
 	}
+	mLogger.log("The TCP listener has started on port %1", listeningPort());
 }
 
 
@@ -38,8 +40,10 @@ void TcpListener::start()
 
 void TcpListener::stop()
 {
+	mLogger.log("Stopping the server...");
 	assert(mServer.isListening());
 	mServer.close();
+	mLogger.log("Server stopped.");
 }
 
 
@@ -51,7 +55,7 @@ quint16 TcpListener::listeningPort()
 	assert(mServer.isListening());
 	if (!mServer.isListening())
 	{
-		throw NotListeningError("The TCP server is not listening");
+		throw NotListeningError(mLogger, "The TCP server is not listening");
 	}
 	return mServer.serverPort();
 }
@@ -68,6 +72,7 @@ void TcpListener::newConnection()
 		return;
 	}
 	auto id = QString("TCP:[%1]:%2").arg(tcpConn->peerAddress().toString()).arg(tcpConn->peerPort()).toUtf8();
+	mLogger.log("New connection: id = %1", id);
 	auto conn = std::make_shared<Connection>(
 		mComponents,
 		id,

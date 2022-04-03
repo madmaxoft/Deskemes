@@ -29,7 +29,8 @@ DetectedDevices::Device::Device(
 // DetectedDevices:
 
 DetectedDevices::DetectedDevices(ComponentCollection & aComponents):
-	ComponentSuper(aComponents)
+	ComponentSuper(aComponents),
+	mLogger(aComponents.logger("DetectedDevices"))
 {
 
 }
@@ -41,7 +42,7 @@ DetectedDevices::DetectedDevices(ComponentCollection & aComponents):
 void DetectedDevices::addDevice(ComponentCollection::ComponentKind aEnumeratorKind, const QByteArray & aEnumeratorDeviceID, DetectedDevices::Device::Status aStatus)
 {
 	QMutexLocker lock(&mtxDevices);
-	qDebug() << "Adding device " << aEnumeratorDeviceID << ", status " << aStatus;
+	mLogger.log("Adding device %1, status %2.", aEnumeratorDeviceID, aStatus);
 
 	// If the device is already present (no matter what enumerator from), only update status:
 	for (auto & devEntry: mDevices)
@@ -52,8 +53,10 @@ void DetectedDevices::addDevice(ComponentCollection::ComponentKind aEnumeratorKi
 		}
 		if (devEntry.second->status() == aStatus)
 		{
+			mLogger.log("Device %1 already present with the same status, ignoring.", aEnumeratorDeviceID);
 			return;
 		}
+		mLogger.log("Device %1 already present, updating status from %2 to %3", aEnumeratorDeviceID, devEntry.second->status(), aStatus);
 		devEntry.second->setStatus(aStatus);
 		lock.unlock();
 		emit deviceStatusChanged(devEntry.second);
@@ -61,6 +64,7 @@ void DetectedDevices::addDevice(ComponentCollection::ComponentKind aEnumeratorKi
 	}
 
 	// Device not found, create a new one:
+	mLogger.log("Device %1 not found, creating a new one.", aEnumeratorDeviceID);
 	auto dev = std::make_shared<Device>(aEnumeratorKind, aEnumeratorDeviceID, aStatus);
 	mDevices[{aEnumeratorKind, aEnumeratorDeviceID}] = dev;
 	lock.unlock();
@@ -74,7 +78,7 @@ void DetectedDevices::addDevice(ComponentCollection::ComponentKind aEnumeratorKi
 void DetectedDevices::delDevice(const QByteArray & aEnumeratorDeviceID)
 {
 	QMutexLocker lock(&mtxDevices);
-	qDebug() << "Removing device " << aEnumeratorDeviceID;
+	mLogger.log("Removing device %1.", aEnumeratorDeviceID);
 
 	for (auto itr = mDevices.begin(), end = mDevices.end(); itr != end; ++itr)
 	{
@@ -88,8 +92,7 @@ void DetectedDevices::delDevice(const QByteArray & aEnumeratorDeviceID)
 		emit deviceRemoved(dev);
 		return;
 	}
-
-	qDebug() << "Device " << aEnumeratorDeviceID << " not found";
+	mLogger.log("Device %1 not found.", aEnumeratorDeviceID);
 }
 
 
@@ -102,6 +105,7 @@ void DetectedDevices::setDeviceStatus(
 	DetectedDevices::Device::Status aStatus
 )
 {
+	// No need to log anything here, the addDevice() logs extensively.
 	addDevice(aEnumeratorKind, aEnumeratorDeviceID, aStatus);
 }
 
@@ -111,6 +115,7 @@ void DetectedDevices::setDeviceStatus(
 
 void DetectedDevices::setDeviceName(const QByteArray & aEnumeratorDeviceID, const QString & aName)
 {
+	mLogger.log("Device id %1 is changing name to %2.", aEnumeratorDeviceID, aName);
 	QMutexLocker lock(&mtxDevices);
 	for (auto & devEntry: mDevices)
 	{
@@ -124,7 +129,7 @@ void DetectedDevices::setDeviceName(const QByteArray & aEnumeratorDeviceID, cons
 		return;
 	}
 
-	qDebug() << "Device " << aEnumeratorDeviceID << " not found";
+	mLogger.log("Device %1 not found.", aEnumeratorDeviceID);
 }
 
 
@@ -133,6 +138,7 @@ void DetectedDevices::setDeviceName(const QByteArray & aEnumeratorDeviceID, cons
 
 void DetectedDevices::setDeviceAvatar(const QByteArray & aEnumeratorDeviceID, const QImage & aAvatar)
 {
+	mLogger.log("Device id %1 is changing its avatar.", aEnumeratorDeviceID);
 	QMutexLocker lock(&mtxDevices);
 	for (auto & devEntry: mDevices)
 	{
@@ -146,7 +152,7 @@ void DetectedDevices::setDeviceAvatar(const QByteArray & aEnumeratorDeviceID, co
 		return;
 	}
 
-	qDebug() << "Device " << aEnumeratorDeviceID << " not found";
+	mLogger.log("Device %1 not found.", aEnumeratorDeviceID);
 }
 
 
@@ -158,7 +164,7 @@ void DetectedDevices::setDeviceAvatar(const QByteArray & aEnumeratorDeviceID, co
 	auto avatar = QImage::fromData(aAvatarImgData);
 	if (avatar.isNull())
 	{
-		qDebug() << "Avatar data cannot be decoded into an image for device " << aEnumeratorDeviceID;
+		mLogger.log("Avatar data cannot be decoded into an image for device %1.", aEnumeratorDeviceID);
 		return;
 	}
 	setDeviceAvatar(aEnumeratorDeviceID, avatar);
@@ -173,6 +179,7 @@ void DetectedDevices::updateEnumeratorDeviceList(
 	const DeviceStatusList & aNewDeviceList
 )
 {
+	mLogger.log("Enumerator %1 is updating its devices, has a list of %2 devices.", aEnumeratorKind, aNewDeviceList.size());
 	QMutexLocker lock(&mtxDevices);
 
 	// Remove all devices no longer known:

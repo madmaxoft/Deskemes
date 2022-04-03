@@ -7,7 +7,8 @@
 
 
 ConnectionMgr::ConnectionMgr(ComponentCollection & aComponents):
-	ComponentSuper(aComponents)
+	ComponentSuper(aComponents),
+	mLogger(aComponents.logger("ConnectionMgr"))
 {
 	requireForStart(ComponentCollection::ckDatabase);
 }
@@ -18,6 +19,7 @@ ConnectionMgr::ConnectionMgr(ComponentCollection & aComponents):
 
 ConnectionMgr::~ConnectionMgr()
 {
+	mLogger.log("Removing all connections...");
 	{
 		QMutexLocker lock(&mMtxConnections);
 		for (auto & conn: mConnections)
@@ -26,6 +28,7 @@ ConnectionMgr::~ConnectionMgr()
 		}
 		mConnections.clear();
 	}
+	mLogger.log("Connections removed.");
 }
 
 
@@ -52,6 +55,7 @@ ConnectionPtr ConnectionMgr::connectionFromID(const QByteArray & aConnectionID)
 			return conn;
 		}
 	}
+	mLogger.log("A non-existent connection ID was requested: %1", aConnectionID);
 	return nullptr;
 }
 
@@ -61,11 +65,13 @@ ConnectionPtr ConnectionMgr::connectionFromID(const QByteArray & aConnectionID)
 
 void ConnectionMgr::stop()
 {
+	mLogger.log("Terminating all connections...");
 	QMutexLocker lock(&mMtxConnections);
 	for (auto & conn: mConnections)
 	{
 		conn->terminate();
 	}
+	mLogger.log("Connections terminated...");
 }
 
 
@@ -74,6 +80,7 @@ void ConnectionMgr::stop()
 
 void ConnectionMgr::addConnection(std::shared_ptr<Connection> aConnection)
 {
+	mLogger.log("Adding a new connection, id = %1.", aConnection->connectionID());
 	connect(aConnection.get(), &Connection::established, this, &ConnectionMgr::connEstablished);
 
 	QMutexLocker lock(&mMtxConnections);
@@ -111,6 +118,7 @@ DetectedDevices::Device::Status ConnectionMgr::deviceStatusFromConnection(const 
 
 void ConnectionMgr::connEstablished(Connection * aConnection)
 {
+	mLogger.log("Connection established, id = %1.", aConnection->connectionID());
 	assert(aConnection->state() == Connection::csEncrypted);
 
 	connect(aConnection, &Connection::disconnected, aConnection,

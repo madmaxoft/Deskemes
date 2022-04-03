@@ -58,6 +58,9 @@ protected:
 	/** The TCP server used for listening for connections. */
 	QTcpServer mServer;
 
+	/** The logger for all log mesages produced by this component. */
+	Logger & mLogger;
+
 
 
 protected Q_SLOTS:

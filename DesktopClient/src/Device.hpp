@@ -29,7 +29,7 @@ class Device:
 public:
 
 	/** Creates a device of the specified public ID that has no connection yet. */
-	explicit Device(const QByteArray & aDeviceID);
+	explicit Device(ComponentCollection & aComponents, const QByteArray & aDeviceID);
 
 	// Simple getters:
 	const QByteArray & deviceID() const { return mDeviceID; }
@@ -58,9 +58,15 @@ protected:
 	/** The timer used for querying status information from the device periodically. */
 	QTimer mInfoQueryTimer;
 
+	/** The logger used for all messages produced by this class. */
+	Logger & mLogger;
+
 
 	/** Opens an InfoChannel on one of the connections, sets it to mInfoChannel. */
 	void openInfoChannel();
+
+	/** Returns a logger appropriate for a device using the specified connection. */
+	static Logger & createLogger(ComponentCollection & aComponents, const QString & aDeviceID);
 
 
 signals:

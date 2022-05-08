@@ -1,3 +1,4 @@
+#!/bin/env lua
 -- Emulates a device, listening for UDP beacons and connecting to the desktop client
 
 

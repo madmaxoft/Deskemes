@@ -24,7 +24,16 @@ UdpBroadcaster::UdpBroadcaster(ComponentCollection & aComponents, QObject * aPar
 
 
 
-void UdpBroadcaster::start(quint16 aPrimaryPort, quint16 aAltPort)
+void UdpBroadcaster::start()
+{
+	startBroadcasting();
+}
+
+
+
+
+
+void UdpBroadcaster::startBroadcasting(quint16 aPrimaryPort, quint16 aAltPort)
 {
 	assert(mPrimaryPort == 0);  // Already started
 	assert(aPrimaryPort != 0);

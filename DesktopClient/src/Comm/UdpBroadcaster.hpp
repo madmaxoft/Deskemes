@@ -35,12 +35,8 @@ public:
 
 	virtual ~UdpBroadcaster() override {}
 
-	/** Starts broadcasting the beacon on the two specified UDP ports.
-	If aAltPort is zero, only the aPrimaryPort is used. */
-	void start(
-		quint16 aPrimaryPort = DEFAULT_BROADCASTER_PORT,
-		quint16 aAltPort = ALTERNATE_BROADCASTER_PORT
-	);
+	// ComponentCollection::Component override:
+	virtual void start() override;
 
 	/** Turns the Discovery flag on. */
 	void startDiscovery();
@@ -64,6 +60,13 @@ protected:
 	Manipulated by startDiscovery() and endDiscovery(). */
 	bool mIsDiscovery;
 
+
+	/** Starts broadcasting the beacon on the two specified UDP ports.
+	If aAltPort is zero, only the aPrimaryPort is used. */
+	void startBroadcasting(
+		quint16 aPrimaryPort = DEFAULT_BROADCASTER_PORT,
+		quint16 aAltPort = ALTERNATE_BROADCASTER_PORT
+	);
 
 	/** Returns the data that should be sent as the beacon.
 	The aIsDiscovery flag is sent in the beacon; discovery indicates that the user is actively searching for new

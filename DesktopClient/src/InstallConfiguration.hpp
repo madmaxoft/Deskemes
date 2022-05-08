@@ -19,6 +19,10 @@ class InstallConfiguration:
 	using ComponentSuper = ComponentCollection::Component<ComponentCollection::ckInstallConfiguration>;
 
 
+	// ComponentCollection::Component overrides:
+	virtual void start(void) override {}  // Nothing needed
+
+
 public:
 
 	/** Initializes the paths.

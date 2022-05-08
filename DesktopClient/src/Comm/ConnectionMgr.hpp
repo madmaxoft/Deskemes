@@ -29,6 +29,10 @@ class ConnectionMgr:
 	Q_OBJECT
 
 
+	// ComponentCollection::Component overrides:
+	virtual void start(void) override {}  // Nothing needed
+
+
 public:
 
 

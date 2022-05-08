@@ -62,8 +62,8 @@ protected:
 
 		virtual ~ComponentBase() {}  // Force a virtual destructor in descendants
 
-		/** Descendants may override to implement a specific action needed for starting the component. */
-		virtual void start() {}
+		/** Descendants must override to implement a specific action needed for starting the component. */
+		virtual void start() = 0;
 
 		/** Indicates that the aRequiredComponent is needed to start before this component.
 		To be used only during component creation (between ComponentCollection constructor and start() call).

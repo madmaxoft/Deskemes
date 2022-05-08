@@ -17,6 +17,10 @@ class MultiLogger:
 	using Super = ComponentCollection::Component<ComponentCollection::ckMultiLogger>;
 
 
+	// ComponentCollection::Component overrides:
+	virtual void start(void) override {}  // Nothing needed
+
+
 public:
 
 	/** Creates the MultiLogger that stores its log files in the specified folder. */

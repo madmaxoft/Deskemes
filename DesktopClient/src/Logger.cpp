@@ -21,6 +21,16 @@ Logger::Logger(const QString & aFileName):
 
 
 
+void Logger::flush()
+{
+	QMutexLocker lock(&mMtxLogFile);
+	mLogFile.flush();
+}
+
+
+
+
+
 QString Logger::currentTimestamp()
 {
 	auto now = QDateTime::currentDateTimeUtc();

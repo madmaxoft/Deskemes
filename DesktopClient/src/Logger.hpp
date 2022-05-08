@@ -80,4 +80,9 @@ public:
 	{
 		return logHexInternal(aData, StringFormatter::format(aFormatString, aArgs...).toUtf8());
 	}
+
+	/** Flushes the log file.
+	Can be called from any thread, is thread-safe also in regard to all the logging functions.
+	Called periodically by MultiLogger. */
+	void flush();
 };

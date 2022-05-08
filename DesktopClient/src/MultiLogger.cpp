@@ -11,8 +11,24 @@ MultiLogger::MultiLogger(ComponentCollection & aComponents, const QString & aLog
 	Super(aComponents),
 	mLogsFolder(aLogsFolder)
 {
+	mTimer.connect(&mTimer, &QTimer::timeout, &mTimer,
+		[this]()
+		{
+			flushAllLogs();
+		}
+	);
+
 	QDir dir;
 	dir.mkpath(aLogsFolder);
+}
+
+
+
+
+
+void MultiLogger::start()
+{
+	mTimer.start(1000);
 }
 
 
@@ -29,6 +45,19 @@ Logger & MultiLogger::logger(const QString & aLoggerName)
 	}
 	auto res = mLoggers.insert({aLoggerName, std::make_unique<Logger>(loggerFileName(aLoggerName))});
 	return *(res.first->second.get());
+}
+
+
+
+
+
+void MultiLogger::flushAllLogs()
+{
+	QMutexLocker locker(&mMtxLoggers);
+	for (auto & logger: mLoggers)
+	{
+		logger.second->flush();
+	}
 }
 
 

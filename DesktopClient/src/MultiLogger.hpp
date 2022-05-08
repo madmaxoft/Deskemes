@@ -2,6 +2,7 @@
 
 #include <QMutex>
 #include <QFile>
+#include <QTimer>
 
 #include "ComponentCollection.hpp"
 #include "Logger.hpp"
@@ -10,7 +11,8 @@
 
 
 
-/** Manages multiple loggers by-device and by-subsystem. */
+/** Manages multiple loggers by-device and by-subsystem.
+Flushes all logfiles periodically. */
 class MultiLogger:
 	public ComponentCollection::Component<ComponentCollection::ckMultiLogger>
 {
@@ -18,7 +20,7 @@ class MultiLogger:
 
 
 	// ComponentCollection::Component overrides:
-	virtual void start(void) override {}  // Nothing needed
+	virtual void start(void) override;
 
 
 public:
@@ -33,6 +35,9 @@ public:
 	If there's no such logger yet, creates one and starts its logfile. */
 	Logger & logger(const QString & aLoggerName);
 
+	/** Flushes all the logs to their logfiles. */
+	void flushAllLogs();
+
 
 protected:
 
@@ -45,6 +50,9 @@ protected:
 
 	/** Protects mLoggers against multithreaded access. */
 	QMutex mMtxLoggers;
+
+	/** Periodical timer for flushing all logs. */
+	QTimer mTimer;
 
 
 	/** Returns the name of the file to which the specified logger should write. */

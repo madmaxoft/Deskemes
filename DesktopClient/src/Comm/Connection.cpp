@@ -562,6 +562,7 @@ ComponentCollection::ComponentKind Connection::enumeratorKindFromTransportKind(C
 
 void Connection::terminate()
 {
+	mLogger.log("Terminating the connection from this side.");
 	mIO->close();
 }
 
@@ -590,10 +591,12 @@ void Connection::setRemotePublicID(const QByteArray & aPublicID)
 	auto pairing = pairings->lookupDevice(mRemotePublicID.value());
 	if (pairing.isPresent())
 	{
+		mLogger.log("There is a valid pairing for this device, sending the public key.");
 		sendCleartextMessage("pubk"_4cc, pairing.value().mLocalPublicKeyData);
 	}
 	else
 	{
+		mLogger.log("The device is not paired.");
 		setState(csUnknownPairing);
 		emit unknownPairing(this);
 	}
@@ -713,6 +716,7 @@ void Connection::checkRemotePublicKeyAndID()
 	if (!pairing.isPresent())
 	{
 		// We don't have a record of this pairing, but the device does. Consider unpaired:
+		mLogger.log("There is no pairing for this device (although the device thinks there is).");
 		setState(csUnknownPairing);
 		emit unknownPairing(this);
 	}
@@ -720,22 +724,26 @@ void Connection::checkRemotePublicKeyAndID()
 	{
 		// We've just decided to pair to this device, so we have our keypair, but haven't received the device's yet
 		// Consider unpaired yet:
+		mLogger.log("There is no pairing for this device, but we have started the process.");
 		setState(csUnknownPairing);
 		emit unknownPairing(this);
 	}
 	else if (pairing.value().mDevicePublicKeyData == mRemotePublicKeyData.value())
 	{
 		// Pairing matches, continue to TLS:
+		mLogger.log("The device has been paired successfully.");
 		setState(csKnownPairing);
 		emit knownPairing(this);
 		if (!mHasSentStartTls)
 		{
+			mLogger.log("Starting TLS...");
 			sendCleartextMessage("stls"_4cc);
 		}
 	}
 	else
 	{
 		// Pairing with a different key, MITM attack? Let someone up decide:
+		mLogger.log("Attempting to pair with a different key, we may be under a MITM attack.");
 		setState(csDifferentKey);
 		emit differentKey(this);
 	}
@@ -747,6 +755,10 @@ void Connection::checkRemotePublicKeyAndID()
 
 void Connection::setState(Connection::State aNewState)
 {
+	if (mState != aNewState)
+	{
+		mLogger.log("Changing state from %1 to %2.", mState, aNewState);
+	}
 	mState = aNewState;
 	emit stateChanged(this, aNewState);
 }
@@ -826,7 +838,7 @@ bool Connection::extractAndHandleCleartextMessage()
 
 void Connection::handleCleartextMessage(const quint32 aMsgType, const QByteArray & aMsg)
 {
-	mLogger.log("Received cleartext message \"%1\".", Utils::writeBE32(aMsgType));
+	mLogger.logHex(aMsg, "Received cleartext message \"%1\".", Utils::writeBE32(aMsgType));
 
 	if (!mHasReceivedIdentification && (aMsgType != "dsms"_4cc))
 	{
@@ -999,7 +1011,7 @@ void Connection::sendCleartextMessage(quint32 aMsgType, const QByteArray & aMsg)
 
 	QByteArray packet = Utils::writeBE32(aMsgType);
 	Utils::writeBE16Lstring(packet, aMsg);
-	mLogger.logHex(packet, "Outoing cleartext message (%1; %2 bytes)", Utils::writeBE32(aMsgType), aMsg.length());
+	mLogger.logHex(packet, "Outgoing cleartext message (%1; %2 bytes)", Utils::writeBE32(aMsgType), aMsg.length());
 	mIO->write(packet);
 	if (aMsgType == "stls"_4cc)
 	{

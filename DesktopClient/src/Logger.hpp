@@ -12,16 +12,25 @@
 
 /** A logger that writes its output to a single file.
 The log-writing can be called simultaneously from multiple threads.
-Note that there's a MultiLogger class / component managing multiple instances of this class. */
+Note that there's a MultiLogger class / component managing multiple instances of this class.
+The logger forces a flush on the log file after every FLUSH_AFTER_N_MESSAGES number of messages written,
+and always after a hex dump. */
 class Logger
 {
 protected:
+
+	/** After writing this many messages, the log file is flushed. */
+	static const int FLUSH_AFTER_N_MESSAGES = 4;
+
 
 	/** The file where the log data is actually written. */
 	QFile mLogFile;
 
 	/** The mutex protecting mLogFile from multithreaded access. */
 	QMutex mMtxLogFile;
+
+	/** Number of log messages to be yet written until a flush is forced on the log file. */
+	int mNumMessagesUntilFlush;
 
 
 	/** Returns the current timestamp as a string, to be prepended to each log line. */

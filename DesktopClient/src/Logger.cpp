@@ -7,7 +7,8 @@
 
 
 Logger::Logger(const QString & aFileName):
-	mLogFile(aFileName)
+	mLogFile(aFileName),
+	mNumMessagesUntilFlush(FLUSH_AFTER_N_MESSAGES)
 {
 	if (!mLogFile.open(QFile::WriteOnly | QFile::Append))
 	{
@@ -37,6 +38,12 @@ void Logger::logInternal(const QByteArray & aLogData)
 	mLogFile.write("\t", 1);
 	mLogFile.write(aLogData);
 	mLogFile.write("\n", 1);
+	mNumMessagesUntilFlush -= 1;
+	if (mNumMessagesUntilFlush == 0)
+	{
+		mLogFile.flush();
+		mNumMessagesUntilFlush = FLUSH_AFTER_N_MESSAGES;
+	}
 }
 
 
@@ -87,4 +94,8 @@ void Logger::logHexInternal(const QByteArray & aHexData, const QByteArray & aLog
 			mLogFile.write(buffer, sizeof(buffer));
 		}
 	}
+
+	// Always flush after logging a hex dump:
+	mLogFile.flush();
+	mNumMessagesUntilFlush = FLUSH_AFTER_N_MESSAGES;
 }

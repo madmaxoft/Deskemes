@@ -46,7 +46,7 @@ protected:
 	template <typename... OtherTs>
 	QString formatAndLog(Logger & aLogger, const QString & aFormatString, const OtherTs &... aValues)
 	{
-		auto res = StringFormatter::format(aFormatString, aValues...);
+		auto res = "ERROR: " + StringFormatter::format(aFormatString, aValues...);
 		aLogger.log(res);
 		return res;
 	}

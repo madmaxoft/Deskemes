@@ -970,6 +970,7 @@ void Connection::handleCleartextMessageStls()
 	connect(ch0.get(), &ChannelZero::channelAcknowledged, ch0.get(),
 		[this](ChannelPtr aChannel)
 		{
+			assert(aChannel != nullptr);
 			QMutexLocker lock(&mMtxChannels);
 			assert(mChannels.find(aChannel->channelID()) == mChannels.end());
 			mChannels[aChannel->channelID()] = aChannel;
@@ -991,15 +992,14 @@ void Connection::sendCleartextMessage(quint32 aMsgType, const QByteArray & aMsg)
 {
 	if (mHasSentStartTls)
 	{
-		mLogger.log("Trying to send message \"%1\" when TLS start has already been requested.", Utils::writeBE32(aMsgType));
+		mLogger.log("ERROR: Trying to send cleartext message \"%1\" when TLS start has already been requested from this side.", Utils::writeBE32(aMsgType));
 		assert(!"TLS start has already been requested");
 		return;
 	}
 
-	mLogger.log("Sending cleartext message \"%1\".", Utils::writeBE32(aMsgType));
-
 	QByteArray packet = Utils::writeBE32(aMsgType);
 	Utils::writeBE16Lstring(packet, aMsg);
+	mLogger.logHex(packet, "Outoing cleartext message (%1; %2 bytes)", Utils::writeBE32(aMsgType), aMsg.length());
 	mIO->write(packet);
 	if (aMsgType == "stls"_4cc)
 	{
@@ -1027,9 +1027,10 @@ bool Connection::extractAndHandleMuxMessage()
 	auto channel = channelByID(channelID);
 	if (channel == nullptr)
 	{
-		mLogger.log("Message received for non-existent channel \"%1\".", channelID);
+		mLogger.log("Message received for non-existent channel %1.", channelID);
 		return true;
 	}
+	mLogger.logHex(mIncomingData.mid(4, msgLen), "Incoming message (%1 bytes) for channel %2", msgLen, channelID);
 	channel->processIncomingMessage(mIncomingData.mid(4, msgLen));
 	mIncomingData = mIncomingData.mid(4 + msgLen);
 	return true;

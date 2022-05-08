@@ -14,7 +14,7 @@
 TcpListener::TcpListener(ComponentCollection & aComponents, QObject * aParent):
 	Super(aParent),
 	ComponentSuper(aComponents),
-	mLogger(aComponents.logger("TcpListener"))
+	mLogger(aComponents.logger("LocalNetListener"))
 {
 	connect(&mServer, &QTcpServer::newConnection, this, &TcpListener::newConnection);
 }

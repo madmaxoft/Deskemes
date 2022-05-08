@@ -15,8 +15,10 @@ UdpBroadcaster::UdpBroadcaster(ComponentCollection & aComponents, QObject * aPar
 	ComponentSuper(aComponents),
 	mPrimaryPort(0),
 	mAltPort(0),
-	mIsDiscovery(false)
+	mIsDiscovery(false),
+	mLogger(aComponents.logger("LocalNetListener"))
 {
+	requireForStart(ComponentCollection::ckTcpListener);
 	connect(&mTimer, &QTimer::timeout, this, &UdpBroadcaster::broadcastBeacon);
 }
 
@@ -40,6 +42,7 @@ void UdpBroadcaster::startBroadcasting(quint16 aPrimaryPort, quint16 aAltPort)
 	mPrimaryPort = aPrimaryPort;
 	mAltPort = aAltPort;
 	mTimer.start(1000);
+	mLogger.log("Started regular UDP broadcasts on ports %1 and %2.", mPrimaryPort, mAltPort);
 }
 
 
@@ -49,6 +52,7 @@ void UdpBroadcaster::startBroadcasting(quint16 aPrimaryPort, quint16 aAltPort)
 void UdpBroadcaster::startDiscovery()
 {
 	mIsDiscovery = true;
+	mLogger.log("Starting UDP discovery");
 }
 
 
@@ -57,6 +61,7 @@ void UdpBroadcaster::startDiscovery()
 
 void UdpBroadcaster::endDiscovery()
 {
+	mLogger.log("Ending UDP discovery");
 	mIsDiscovery = false;
 }
 
@@ -87,6 +92,11 @@ void UdpBroadcaster::broadcastBeacon()
 	static const auto beaconRegular = createBeacon(false);
 	static const auto beaconDiscovery = createBeacon(true);
 	const auto & beacon = mIsDiscovery ? beaconDiscovery : beaconRegular;
+
+	if (mIsDiscovery)
+	{
+		mLogger.log("Broadcasting a discovery beacon");
+	}
 
 	// Broadcast the beacon on all interfaces / addresses:
 	for (const auto & addr: QNetworkInterface::allAddresses())

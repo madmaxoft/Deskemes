@@ -60,6 +60,9 @@ protected:
 	Manipulated by startDiscovery() and endDiscovery(). */
 	bool mIsDiscovery;
 
+	/** The logger for all log mesages produced by this component. */
+	Logger & mLogger;
+
 
 	/** Starts broadcasting the beacon on the two specified UDP ports.
 	If aAltPort is zero, only the aPrimaryPort is used. */

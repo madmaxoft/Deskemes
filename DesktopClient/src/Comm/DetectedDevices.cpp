@@ -25,6 +25,25 @@ DetectedDevices::Device::Device(
 
 
 
+QString DetectedDevices::Device::statusToString(DetectedDevices::Device::Status aStatus)
+{
+	switch (aStatus)
+	{
+		case dsOnline:       return "dsOnline";
+		case dsNoPubKey:     return "dsNoPubKey";
+		case dsNeedPairing:  return "dsNeedPairing";
+		case dsUnauthorized: return "dsUnauthorized";
+		case dsBlacklisted:  return "dsBlacklisted";
+		case dsOffline:      return "dsOffline";
+		case dsNeedApp:      return "dsNeedApp";
+		case dsFailed:       return "dsFailed";
+	}
+}
+
+
+
+
+
 ////////////////////////////////////////////////////////////////////////////////
 // DetectedDevices:
 
@@ -39,10 +58,14 @@ DetectedDevices::DetectedDevices(ComponentCollection & aComponents):
 
 
 
-void DetectedDevices::addDevice(ComponentCollection::ComponentKind aEnumeratorKind, const QByteArray & aEnumeratorDeviceID, DetectedDevices::Device::Status aStatus)
+void DetectedDevices::addDevice(
+	ComponentCollection::ComponentKind aEnumeratorKind,
+	const QByteArray & aEnumeratorDeviceID,
+	DetectedDevices::Device::Status aStatus
+)
 {
 	QMutexLocker lock(&mtxDevices);
-	mLogger.log("Adding device %1, status %2.", aEnumeratorDeviceID, aStatus);
+	mLogger.log("Adding device %1, status %2.", aEnumeratorDeviceID, Device::statusToString(aStatus));
 
 	// If the device is already present (no matter what enumerator from), only update status:
 	for (auto & devEntry: mDevices)
@@ -56,7 +79,9 @@ void DetectedDevices::addDevice(ComponentCollection::ComponentKind aEnumeratorKi
 			mLogger.log("Device %1 already present with the same status, ignoring.", aEnumeratorDeviceID);
 			return;
 		}
-		mLogger.log("Device %1 already present, updating status from %2 to %3", aEnumeratorDeviceID, devEntry.second->status(), aStatus);
+		mLogger.log("Device %1 already present, updating status from %2 to %3",
+			aEnumeratorDeviceID, Device::statusToString(devEntry.second->status()), Device::statusToString(aStatus)
+		);
 		devEntry.second->setStatus(aStatus);
 		lock.unlock();
 		emit deviceStatusChanged(devEntry.second);
@@ -115,7 +140,7 @@ void DetectedDevices::setDeviceStatus(
 
 void DetectedDevices::setDeviceName(const QByteArray & aEnumeratorDeviceID, const QString & aName)
 {
-	mLogger.log("Device id %1 is changing name to %2.", aEnumeratorDeviceID, aName);
+	mLogger.log("Device %1 is changing name to %2.", aEnumeratorDeviceID, aName);
 	QMutexLocker lock(&mtxDevices);
 	for (auto & devEntry: mDevices)
 	{
@@ -138,7 +163,7 @@ void DetectedDevices::setDeviceName(const QByteArray & aEnumeratorDeviceID, cons
 
 void DetectedDevices::setDeviceAvatar(const QByteArray & aEnumeratorDeviceID, const QImage & aAvatar)
 {
-	mLogger.log("Device id %1 is changing its avatar.", aEnumeratorDeviceID);
+	mLogger.log("Device %1 is changing its avatar.", aEnumeratorDeviceID);
 	QMutexLocker lock(&mtxDevices);
 	for (auto & devEntry: mDevices)
 	{

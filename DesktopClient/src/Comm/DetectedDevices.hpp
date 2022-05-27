@@ -43,7 +43,7 @@ public:
 			dsNeedPairing,   ///< The device has provided a PublicKey but it's not trusted, need user's confirmation
 			dsUnauthorized,  ///< The device requires on-device (ADB) authorization before it can be accessed
 			dsBlacklisted,   ///< The device has been blacklisted, connections will not be allowed
-			dsOffline,       ///< The device is known but unavailable (ADB bootloader, ...)
+			dsOffline,       ///< The device is known but unavailable (ADB bootloader, TCP no PublicID yet, ...)
 			dsNeedApp,       ///< The app is not installed on the device (ADB)
 			dsFailed,        ///< The device failed to connect properly, unknown reason (eg. ADB port-reversing failed)
 		};
@@ -61,6 +61,9 @@ public:
 		void setStatus(Status aStatus) { mStatus = aStatus; }
 		void setAvatar(const QImage & aAvatar) { mAvatar = aAvatar; }
 		void setName(const QString & aName) { mName = aName; }
+
+		/** Translates the status enum to a string, used for logging. */
+		static QString statusToString(Status aStatus);
 
 
 	protected:

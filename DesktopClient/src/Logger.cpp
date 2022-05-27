@@ -80,7 +80,7 @@ void Logger::logHexInternal(const QByteArray & aHexData, const QByteArray & aLog
 		{
 			if (idx + chIdx < len)
 			{
-				auto ch = aHexData[idx + chIdx];
+				auto ch = static_cast<unsigned char>(aHexData[idx + chIdx]);
 				static const char hexChar[] = "0123456789abcdef";
 				buffer[chIdx * 3 + 1] = hexChar[ch / 16];
 				buffer[chIdx * 3 + 2] = hexChar[ch % 16];

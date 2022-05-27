@@ -7,6 +7,7 @@
 #include "../Optional.hpp"
 #include "../ComponentCollection.hpp"
 #include "../../lib/PolarSSL-cpp/CallbackSslContext.h"
+#include "DetectedDevices.hpp"
 
 
 
@@ -32,6 +33,9 @@ class Connection:
 {
 	using Super = QObject;
 	Q_OBJECT
+
+	/** The couter used to identify connections in the logs. */
+	static std::atomic_int mCounter;
 
 
 public:
@@ -99,6 +103,9 @@ public:
 
 	/** Translates the TransportKind into the respective enumerator kind. */
 	static ComponentCollection::ComponentKind enumeratorKindFromTransportKind(TransportKind aTransportKind);
+
+	/** Translates the State into DetectdDevices::Device::Status. */
+	static DetectedDevices::Device::Status stateToDetectedDevicesStatus(State aState);
 
 	/** Terminates the connection forcefully. */
 	Q_INVOKABLE void terminate();

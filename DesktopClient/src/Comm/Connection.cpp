@@ -593,6 +593,7 @@ void Connection::setRemotePublicID(const QByteArray & aPublicID)
 	{
 		mLogger.log("There is a valid pairing for this device, sending the public key.");
 		sendCleartextMessage("pubk"_4cc, pairing.value().mLocalPublicKeyData);
+		mComponents.get<DetectedDevices>()->setDeviceStatus(enumeratorKind(), mConnectionID, DetectedDevices::Device::dsNeedPairing);
 	}
 	else
 	{
@@ -755,12 +756,36 @@ void Connection::checkRemotePublicKeyAndID()
 
 void Connection::setState(Connection::State aNewState)
 {
+	auto devStatus = stateToDetectedDevicesStatus(aNewState);
 	if (mState != aNewState)
 	{
-		mLogger.log("Changing state from %1 to %2.", mState, aNewState);
+		mLogger.log("Changing state from %1 to %2, detection status %3.",
+			mState, aNewState,
+			DetectedDevices::Device::statusToString(devStatus)
+		);
 	}
 	mState = aNewState;
 	emit stateChanged(this, aNewState);
+	mComponents.get<DetectedDevices>()->setDeviceStatus(enumeratorKind(), mConnectionID, devStatus);
+}
+
+
+
+
+
+DetectedDevices::Device::Status Connection::stateToDetectedDevicesStatus(Connection::State aState)
+{
+	switch (aState)
+	{
+		case Connection::State::csInitial:          return DetectedDevices::Device::dsOffline;
+		case Connection::State::csUnknownPairing:   return DetectedDevices::Device::dsNeedPairing;
+		case Connection::State::csKnownPairing:     return DetectedDevices::Device::dsNeedPairing;
+		case Connection::State::csRequestedPairing: return DetectedDevices::Device::dsNeedPairing;
+		case Connection::State::csBlacklisted:      return DetectedDevices::Device::dsBlacklisted;
+		case Connection::State::csDifferentKey:     return DetectedDevices::Device::dsFailed;
+		case Connection::State::csEncrypted:        return DetectedDevices::Device::dsOnline;
+		case Connection::State::csDisconnected:     return DetectedDevices::Device::dsOffline;
+	}
 }
 
 
@@ -855,12 +880,15 @@ void Connection::handleCleartextMessage(const quint32 aMsgType, const QByteArray
 		}
 		case "fnam"_4cc:
 		{
-			setFriendlyName(QString::fromUtf8(aMsg));
+			auto name = QString::fromUtf8(aMsg);
+			mComponents.get<DetectedDevices>()->setDeviceName(mConnectionID, name);
+			setFriendlyName(name);
 			break;
 		}
 		case "avtr"_4cc:
 		{
 			setAvatar(aMsg);
+			mComponents.get<DetectedDevices>()->setDeviceAvatar(mConnectionID, QImage::fromData(aMsg));
 			break;
 		}
 		case "pubi"_4cc:
@@ -922,6 +950,9 @@ void Connection::handleCleartextMessageDsms(const QByteArray & aMsg)
 	{
 		sendCleartextMessage("avtr"_4cc, avatar.value());
 	}
+
+	// Consider this a detected device:
+	mComponents.get<DetectedDevices>()->addDevice(enumeratorKind(), mConnectionID, DetectedDevices::Device::dsOffline);
 }
 
 

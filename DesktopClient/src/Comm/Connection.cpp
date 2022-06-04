@@ -836,6 +836,7 @@ void Connection::processIncomingData(const QByteArray & aData)
 		case csEncrypted:
 		{
 			// Add the data to the internal buffer, then process the TLS protocol:
+			mLogger.logHex(aData, "Incoming encrypted data (%1 bytes)", aData.size());
 			mIncomingDataEncrypted.append(aData);
 			processTls();
 			break;
@@ -1209,6 +1210,7 @@ void Connection::processTls()
 
 int Connection::receiveEncrypted(unsigned char * aBuffer, size_t aNumBytes)
 {
+	// The TLS layer wants to read encrypted data from the remote
 	if (mIncomingDataEncrypted.isEmpty())
 	{
 		return MBEDTLS_ERR_SSL_WANT_READ;
@@ -1225,6 +1227,11 @@ int Connection::receiveEncrypted(unsigned char * aBuffer, size_t aNumBytes)
 
 int Connection::sendEncrypted(const unsigned char * aBuffer, size_t aNumBytes)
 {
+	// The TLS layer wants to write encrypted data to the remote:
+	mLogger.logHex(
+		QByteArray(reinterpret_cast<const char *>(aBuffer), static_cast<int>(aNumBytes)),
+		"Outgoing encrypted data (%1 bytes)", aNumBytes
+	);
 	return static_cast<int>(mIO->write(reinterpret_cast<const char *>(aBuffer), static_cast<qint64>(aNumBytes)));
 }
 

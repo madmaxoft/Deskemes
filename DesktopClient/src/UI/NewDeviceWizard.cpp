@@ -79,6 +79,7 @@ QString NewDeviceWizard::pageIdToString(int aPageID)
 {
 	switch (aPageID)
 	{
+		case -1:                  return "<Invalid page>";  // Used internally by Qt when cancelling the wizard
 		case pgDeviceList:        return "pgDeviceList";
 		case pgBlacklisted:       return "pgBlacklisted";
 		case pgNeedAuth:          return "pgNeedAuth";

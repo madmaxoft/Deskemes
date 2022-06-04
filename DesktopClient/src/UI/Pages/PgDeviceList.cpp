@@ -19,6 +19,7 @@ PgDeviceList::PgDeviceList(ComponentCollection & aComponents, NewDeviceWizard & 
 {
 	mUI->setupUi(this);
 	connect(mUI->tvDevices, &QTableView::doubleClicked, this, &PgDeviceList::deviceDoubleClicked);
+	mUI->tvDevices->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
 }
 
 

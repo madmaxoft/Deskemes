@@ -68,9 +68,27 @@ int PgDeviceList::nextId() const
 	auto conn = mComponents.get<ConnectionMgr>()->connectionFromID(sel->enumeratorDeviceID());
 	if (conn != nullptr)
 	{
-		mParent.logger().log("PgDeviceList::nextId(): The device is already connected through %1, finishing the wizard", conn->connectionID());
+		mParent.logger().log("PgDeviceList::nextId(): The device is already connected through %1 in state %2 (%3).",
+			conn->connectionID(),
+			conn->state(),
+			Connection::stateToString(conn->state())
+		);
 		mParent.setConnection(conn);
-		return NewDeviceWizard::pgSucceeded;
+		switch (conn->state())
+		{
+			case Connection::State::csInitial:
+			{
+				// This connection doesn't help at all, continue with the regular wizard:
+				break;
+			}
+			case Connection::State::csUnknownPairing:    return NewDeviceWizard::pgPairInit;
+			case Connection::State::csKnownPairing:      return NewDeviceWizard::pgSucceeded;  // TODO: This may be misleading, we need an "in progress" page
+			case Connection::State::csRequestedPairing:  return NewDeviceWizard::pgPairInit;
+			case Connection::State::csBlacklisted:       return NewDeviceWizard::pgBlacklisted;
+			case Connection::State::csDifferentKey:      return NewDeviceWizard::pgBlacklisted;  // TODO: Should we report this more explicitly?
+			case Connection::State::csEncrypted:         return NewDeviceWizard::pgSucceeded;
+			case Connection::State::csDisconnected:      return NewDeviceWizard::pgFailed;
+		}
 	}
 
 	// Continue to the page relevant to the device's status:

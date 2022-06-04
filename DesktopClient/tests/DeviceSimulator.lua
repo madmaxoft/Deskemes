@@ -634,7 +634,7 @@ function Device:switchToMuxProtocol()
 		certificate = "SimulatorCert.pem"
 	}
 	self.mSocket = tls.wrap(self.mSocket, params)
-	self.mSocket:dohandshake()
+	assert(self.mSocket:dohandshake())
 	self.extractProcessMessage = self.extractProcessMuxMessage
 	self.mChannels[0] = ChannelZero:new({mDevice = self, mID = 0})
 end

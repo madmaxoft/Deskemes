@@ -107,6 +107,9 @@ public:
 	/** Translates the State into DetectdDevices::Device::Status. */
 	static DetectedDevices::Device::Status stateToDetectedDevicesStatus(State aState);
 
+	/** Translates the State into a string representation, used mainly for logging. */
+	static QString stateToString(State aState);
+
 	/** Terminates the connection forcefully. */
 	Q_INVOKABLE void terminate();
 

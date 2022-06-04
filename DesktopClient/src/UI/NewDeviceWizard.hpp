@@ -54,6 +54,13 @@ public:
 	/** Stores the connection to work on. */
 	void setConnection(ConnectionPtr aConnection);
 
+	/** Returns the logger to be used for all the actions within this wizard. */
+	PrefixLogger & logger() { return mLogger; }
+
+	/** Returns a string representing the page ID.
+	Used mainly for logging purposes. */
+	static QString pageIdToString(int aPageID);
+
 
 protected:
 
@@ -66,4 +73,7 @@ protected:
 	/** The connection selected which the wizard should bring to a full complete device.
 	Set by pgTcpDeviceList, (TODO USB and Bluetooth). */
 	ConnectionPtr mConnection;
+
+	/** The logger used for logging all actions within the wizard. */
+	PrefixLogger mLogger;
 };

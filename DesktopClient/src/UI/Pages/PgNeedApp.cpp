@@ -114,6 +114,7 @@ void PgNeedApp::checkDeviceStatus()
 
 void PgNeedApp::tryInstallApp()
 {
+	mParent.logger().log("Trying to install the app.");
 	auto appInst = new AdbAppInstaller;
 	connect(appInst, &AdbAppInstaller::installed,     this, &PgNeedApp::onAppInstalled);
 	connect(appInst, &AdbAppInstaller::errorOccurred, this, &PgNeedApp::onAppInstallFailed);
@@ -130,6 +131,7 @@ void PgNeedApp::tryInstallApp()
 
 void PgNeedApp::openBrowserWithAppWebPage()
 {
+	mParent.logger().log("Trying to open browser with URL %1.", APK_URL);
 	auto shellCmd = QString::fromUtf8("am start -a android.intent.action.VIEW -d %1").arg(APK_URL);
 	auto adbComm = new AdbCommunicator(mComponents.logger("Adb-OpenBrowser"));
 	connect(adbComm, &AdbCommunicator::connected,      this,    [=](){ adbComm->assignDevice(mParent.device()->enumeratorDeviceID()); });
@@ -145,6 +147,7 @@ void PgNeedApp::openBrowserWithAppWebPage()
 
 void PgNeedApp::onAppInstalled()
 {
+	mParent.logger().log("App installation succeeded.");
 	mUI->btnPushOverUsb->show();
 	mUI->lblAppInstallResult->setText(tr("App installation succeeded."));
 	mUI->lblAppInstallResult->show();
@@ -157,6 +160,7 @@ void PgNeedApp::onAppInstalled()
 
 void PgNeedApp::onAppInstallFailed(QString aErrorDesc)
 {
+	mParent.logger().log("App installation failed: %1", aErrorDesc);
 	mUI->btnPushOverUsb->show();
 	mUI->lblAppInstallResult->setText(tr("App installation failed:\n%1").arg(aErrorDesc));
 	mUI->lblAppInstallResult->show();

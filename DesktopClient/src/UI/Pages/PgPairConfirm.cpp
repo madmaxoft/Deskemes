@@ -85,6 +85,7 @@ void PgPairConfirm::cleanupPage()
 bool PgPairConfirm::validatePage()
 {
 	// The user clicked the Commit button, store the pairing:
+	mParent.logger().log("The user approved the pairing.");
 	mParent.connection()->localPairingApproved();
 	return true;
 }

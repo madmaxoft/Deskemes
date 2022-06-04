@@ -17,6 +17,8 @@ The logger forces a flush on the log file after every FLUSH_AFTER_N_MESSAGES num
 and always after a hex dump. */
 class Logger
 {
+	friend class PrefixLogger;  // Needs access to logInternal() and logHexInternal()
+
 protected:
 
 	/** After writing this many messages, the log file is flushed. */
@@ -85,4 +87,62 @@ public:
 	Can be called from any thread, is thread-safe also in regard to all the logging functions.
 	Called periodically by MultiLogger. */
 	void flush();
+};
+
+
+
+
+
+/** Relays log messages to a Logger, but every message is prefixed with a constant string, given to the constructor.
+Typically, the prefix is something like "Module: ", which is used when multiple modules share the same Logger. */
+class PrefixLogger
+{
+
+	/** The Logger where the messages are output. */
+	Logger & mLogger;
+
+	/** The prefix to use for log messages. */
+	const QByteArray mPrefix;
+
+
+public:
+
+	/** Creates a new instance that binds to the specified Logger instance and uses the specified prefix for messages. */
+	PrefixLogger(Logger & aLogger, const QString & aPrefix):
+		mLogger(aLogger),
+		mPrefix(aPrefix.toUtf8())
+	{
+	}
+
+	/** Writes a formatted string to the log.
+	The format string follows QString::arg()'s formatting, aArgs can be anything serializable by QDebug. */
+	template <size_t N, typename... T>
+	void log(const char (&aFormatString)[N], const T &... aArgs)
+	{
+		log(QString::fromUtf8(aFormatString, N), aArgs...);
+	}
+
+	/** Writes a formatted string to the log.
+	The format string follows QString::arg()'s formatting, aArgs can be anything serializable by QDebug. */
+	template <typename... T>
+	void log(const QString & aFormatString, const T &... aArgs)
+	{
+		mLogger.logInternal(mPrefix + StringFormatter::format(aFormatString, aArgs...).toUtf8());
+	}
+
+	/** Logs the formatted label, followed by a hex dump of the data.
+	The format string follows QString::arg()'s formatting, aArgs can be anything serializable by QDebug. */
+	template <size_t N, typename... T>
+	void logHex(const QByteArray & aData, const char (&aFormatString)[N], const T &... aArgs)
+	{
+		logHex(aData, QString::fromUtf8(aFormatString, N), aArgs...);
+	}
+
+	/** Logs the formatted label, followed by a hex dump of the data.
+	The format string follows QString::arg()'s formatting, aArgs can be anything serializable by QDebug. */
+	template <typename... T>
+	void logHex(const QByteArray & aData, const QString & aFormatString, const T... aArgs)
+	{
+		return mLogger.logHexInternal(aData, mPrefix + StringFormatter::format(aFormatString, aArgs...).toUtf8());
+	}
 };

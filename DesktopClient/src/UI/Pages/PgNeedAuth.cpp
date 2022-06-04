@@ -32,6 +32,7 @@ PgNeedAuth::~PgNeedAuth()
 
 void PgNeedAuth::initializePage()
 {
+	mParent.logger().log("Initializing PubKey display.");
 	initPubKeyDisplay();
 
 	// Set up notification for when the device changes state:
@@ -77,6 +78,8 @@ int PgNeedAuth::nextId() const
 
 void PgNeedAuth::checkDeviceStatus(DetectedDevices::DevicePtr aDevice)
 {
+	mParent.logger().log("Device status changed for device %1.", aDevice->enumeratorDeviceID());
+
 	// Check the device state whenever *any* device's state changes, so ignore the param:
 	Q_UNUSED(aDevice);
 
@@ -89,6 +92,9 @@ void PgNeedAuth::checkDeviceStatus(DetectedDevices::DevicePtr aDevice)
 		case DetectedDevices::Device::dsOnline:
 		case DetectedDevices::Device::dsFailed:
 		{
+			mParent.logger().log("The device is in a final state %1, advancing the wizard.",
+				DetectedDevices::Device::statusToString(mParent.device()->status())
+			);
 			wizard()->next();
 			break;
 		}
@@ -113,6 +119,7 @@ void PgNeedAuth::initPubKeyDisplay()
 	}
 	auto md5 = QString::fromUtf8(QCryptographicHash::hash(adbPubKey, QCryptographicHash::Md5).toHex(':'));
 	auto sha256 = QString::fromUtf8(QCryptographicHash::hash(adbPubKey, QCryptographicHash::Sha256).toHex(':'));
+	mParent.logger().log("This computer's ADB pub key: MD5: %1 ; SHA-256: %2", md5, sha256);
 	mUI->lblRsaKey->setText(
 		tr("This computer's RSA key fingerprint is:\n%1 (MD5)\n  -- or --\n%2 (SHA256)")
 		.arg(md5, sha256)

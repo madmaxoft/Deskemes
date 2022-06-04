@@ -792,6 +792,25 @@ DetectedDevices::Device::Status Connection::stateToDetectedDevicesStatus(Connect
 
 
 
+QString Connection::stateToString(Connection::State aState)
+{
+	switch (aState)
+	{
+		case Connection::State::csInitial:          return "csInitial";
+		case Connection::State::csUnknownPairing:   return "csUnknownPairing";
+		case Connection::State::csKnownPairing:     return "csKnownPairing";
+		case Connection::State::csRequestedPairing: return "csRequestedPairing";
+		case Connection::State::csBlacklisted:      return "csBlacklisted";
+		case Connection::State::csDifferentKey:     return "csDifferentKey";
+		case Connection::State::csEncrypted:        return "csEncrypted";
+		case Connection::State::csDisconnected:     return "csDisconnected";
+	}
+}
+
+
+
+
+
 void Connection::processIncomingData(const QByteArray & aData)
 {
 	switch (mState)

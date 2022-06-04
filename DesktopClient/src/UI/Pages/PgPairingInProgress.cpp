@@ -33,6 +33,7 @@ PgPairingInProgress::~PgPairingInProgress()
 
 void PgPairingInProgress::initializePage()
 {
+	mParent.logger().log("Pairing in progress.");
 	auto conn = mParent.connection();
 	assert(conn != nullptr);
 	connect(conn.get(), &Connection::stateChanged, this, &PgPairingInProgress::connStateChanged);
@@ -50,14 +51,22 @@ void PgPairingInProgress::connStateChanged(Connection * aConnection)
 {
 	if (aConnection != mParent.connection().get())
 	{
-		qWarning() << "Different connection reporting";
+		mParent.logger().log("Different connection reporting (got %1, exp %2)",
+			mParent.connection()->connectionID(),
+			aConnection->connectionID()
+		);
 		return;
 	}
+	mParent.logger().log("Connection changed state to %1 (%2)",
+		aConnection->state(),
+		Connection::stateToString(aConnection->state())
+	);
 	switch (aConnection->state())
 	{
 		case Connection::csEncrypted:
 		{
 			// Success!
+			mParent.logger().log("Connection is now encrypted, reporting success.");
 			mNextPage = NewDeviceWizard::pgSucceeded;
 			emit completeChanged();
 			mParent.next();
@@ -67,6 +76,7 @@ void PgPairingInProgress::connStateChanged(Connection * aConnection)
 		case Connection::csKnownPairing:
 		{
 			// Still waiting
+			mParent.logger().log("Still waiting");
 			mNextPage = -1;
 			emit completeChanged();
 			return;
@@ -74,6 +84,7 @@ void PgPairingInProgress::connStateChanged(Connection * aConnection)
 		default:
 		{
 			// Error
+			mParent.logger().log("Error, failing the wizard.");
 			mNextPage = NewDeviceWizard::pgFailed;
 			emit completeChanged();
 			mParent.next();

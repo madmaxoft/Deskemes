@@ -15,7 +15,8 @@
 
 NewDeviceWizard::NewDeviceWizard(ComponentCollection & aComponents, QWidget * aParent):
 	Super(aParent),
-	mComponents(aComponents)
+	mComponents(aComponents),
+	mLogger(aComponents.logger("DetectedDevices"), "NewDeviceWizard: ")  // Use the same logger as DetectedDevices
 {
 	setWindowTitle(tr("Deskemes: Add new device"));
 	setWizardStyle(QWizard::ModernStyle);
@@ -30,6 +31,14 @@ NewDeviceWizard::NewDeviceWizard(ComponentCollection & aComponents, QWidget * aP
 
 	// Start explicit discovery:
 	mComponents.get<UdpBroadcaster>()->startDiscovery();
+	mLogger.log("Created the wizard");
+
+	connect(this, &QWizard::currentIdChanged, this,
+		[=](int aID)
+		{
+			mLogger.log("Going to page %1 (%2)", aID, pageIdToString(aID));
+		}
+	);
 }
 
 
@@ -38,6 +47,7 @@ NewDeviceWizard::NewDeviceWizard(ComponentCollection & aComponents, QWidget * aP
 
 NewDeviceWizard::~NewDeviceWizard()
 {
+	mLogger.log("The wizard is terminating.");
 	mComponents.get<UdpBroadcaster>()->endDiscovery();
 }
 
@@ -47,6 +57,7 @@ NewDeviceWizard::~NewDeviceWizard()
 
 void NewDeviceWizard::setDevice(DetectedDevices::DevicePtr aDevice)
 {
+	mLogger.log("Setting the device to %1", aDevice->enumeratorDeviceID());
 	mDevice = aDevice;
 }
 
@@ -56,5 +67,28 @@ void NewDeviceWizard::setDevice(DetectedDevices::DevicePtr aDevice)
 
 void NewDeviceWizard::setConnection(ConnectionPtr aConnection)
 {
+	mLogger.log("Setting the connection to %1", aConnection->connectionID());
 	mConnection = aConnection;
+}
+
+
+
+
+
+QString NewDeviceWizard::pageIdToString(int aPageID)
+{
+	switch (aPageID)
+	{
+		case pgDeviceList:        return "pgDeviceList";
+		case pgBlacklisted:       return "pgBlacklisted";
+		case pgNeedAuth:          return "pgNeedAuth";
+		case pgNeedApp:           return "pgNeedApp";
+		case pgPairInit:          return "pgPairInit";
+		case pgPairConfirm:       return "pgPairConfirm";
+		case pgPairingInProgress: return "pgPairingInProgress";
+		case pgFailed:            return "pgFailed";
+		case pgSucceeded:         return "pgSucceeded";
+	}
+	assert(!"Unknown page ID");
+	return "<unknown page ID>";
 }

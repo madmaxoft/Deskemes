@@ -59,6 +59,7 @@ int PgDeviceList::nextId() const
 	auto sel = selectedDevice();
 	if (sel == nullptr)
 	{
+		mParent.logger().log("PgDeviceList::nextId(): No selected device, reporting failure.");
 		return NewDeviceWizard::pgFailed;
 	}
 
@@ -66,6 +67,7 @@ int PgDeviceList::nextId() const
 	auto conn = mComponents.get<ConnectionMgr>()->connectionFromID(sel->enumeratorDeviceID());
 	if (conn != nullptr)
 	{
+		mParent.logger().log("PgDeviceList::nextId(): The device is already connected through %1, finishing the wizard", conn->connectionID());
 		mParent.setConnection(conn);
 		return NewDeviceWizard::pgSucceeded;
 	}
@@ -109,9 +111,11 @@ DetectedDevices::DevicePtr PgDeviceList::selectedDevice() const
 
 void PgDeviceList::deviceDoubleClicked(const QModelIndex & aIndex)
 {
+	mParent.logger().log("deviceDoubleClicked: %1", aIndex.row());
 	mUI->tvDevices->selectRow(aIndex.row());
 	if (isComplete())
 	{
+		mParent.logger().log("DblClick: Advancing the wizard");
 		wizard()->next();
 	}
 }

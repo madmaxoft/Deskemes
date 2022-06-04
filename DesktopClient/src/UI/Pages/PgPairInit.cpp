@@ -37,6 +37,7 @@ PgPairInit::~PgPairInit()
 
 void PgPairInit::initializePage()
 {
+	mParent.logger().log("Initializing pairing.");
 	auto conn = mParent.connection();
 	assert(conn != nullptr);
 	assert(conn->remotePublicID().isPresent());
@@ -46,12 +47,12 @@ void PgPairInit::initializePage()
 	mIsLocalKeyPairCreated = pairings->lookupDevice(conn->remotePublicID().value()).isPresent();
 	if (!mIsLocalKeyPairCreated)
 	{
-		qDebug() << "Enqueueing local public key generation";
+		mParent.logger().log("Enqueueing local public key generation");
 		BackgroundTasks::enqueue(
 			tr("Generate public key for %1").arg(displayName),
 			[this, conn, displayName, pairings]()
 			{
-				qDebug() << "Sending local public key to " << displayName;
+				mParent.logger().log("Sending local public key to %1.", displayName);
 				pairings->createLocalKeyPair(conn->remotePublicID().value(), displayName);
 				QMetaObject::invokeMethod(conn.get(), "sendLocalPublicKey");
 				QMetaObject::invokeMethod(this, "localKeyPairCreated");
@@ -66,7 +67,7 @@ void PgPairInit::initializePage()
 	if (conn->remotePublicKeyData().isPresent())
 	{
 		// Need to queue-invoke this method, otherwise the wizard becomes confused about what page to display
-		qDebug() << "The remote public key has already been received, invoking receivedPublicKey()";
+		mParent.logger().log("The remote public key has already been received, invoking receivedPublicKey()");
 		QMetaObject::invokeMethod(this, "receivedPublicKey", Qt::QueuedConnection, Q_ARG(Connection *, conn.get()));
 	}
 }

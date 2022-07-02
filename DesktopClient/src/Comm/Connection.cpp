@@ -14,7 +14,9 @@
 
 
 
-/** If defined, TLS messages below the threshold will be logged through the connection's Logger. */
+/** If defined, TLS messages below the threshold will be logged through the connection's Logger.
+threshold of 0 turns off all messages (default)
+threshold of 5 turns all messages on. */
 // #define DEBUG_TLS 5
 
 
@@ -22,8 +24,7 @@
 
 
 /** Implemented in MbedTls, sets the threshold for debug messages reported via the debug hook.
-threshold of 0 turns off all messages (default)
-threshold of 5 turns all messages on. */
+See also the DEBUG_TLS macro. */
 extern "C" void mbedtls_debug_set_threshold(int threshold);
 
 
@@ -38,7 +39,14 @@ static void tlsDebugCallback(void * aCallbackData, int aDebugLevel, const char *
 	Q_UNUSED(aLineNumber);
 
 	auto conn = reinterpret_cast<Connection *>(aCallbackData);
-	conn->logger().log("TLS: %1", aMessage);
+
+	// Drop any terminating CR, LF, spaces or tabs:
+	std::string msg(aMessage);
+	while (static_cast<unsigned char>(msg.back()) <= 32)
+	{
+		msg.pop_back();
+	}
+	conn->logger().log("TLS: %1", msg);
 }
 
 
@@ -81,7 +89,7 @@ static int tlsVerifyCallback(void * aUserData, mbedtls_x509_crt * aCurrentCert, 
 		*aVerificationFlags = 0xffffffff;
 		return -1;
 	}
-	if (isSameKey(conn->remotePublicKeyData().value().constData(), pubKeyDer))
+	if (isSameKey(conn->remotePublicKeyData().value(), pubKeyDer))
 	{
 		conn->logger().log("The key matches");
 		*aVerificationFlags = 0;
@@ -1015,17 +1023,23 @@ void Connection::handleCleartextMessageStls()
 	auto privKey = std::make_shared<CryptoKey>(pairing.value().mLocalPrivateKeyData.toStdString(), std::string());
 	auto pubKey = std::make_shared<CryptoKey>(pairing.value().mLocalPublicKeyData.toStdString());
 	auto cert = X509Cert::fromPrivateKey(privKey, pubKey, "CN=Deskemes");
+	if (cert == nullptr)
+	{
+		mLogger.log("Failed to initialize the certificate.");
+		terminate();
+		return;
+	}
 	config->setOwnCert(cert, privKey);
 	config->setAuthMode(SslAuthMode::Optional);
 	config->setVerifyCallback(tlsVerifyCallback, this);
+	mLogger.logHex(QByteArray::fromStdString(cert->publicKeyDer()), "Certificate DER");
 	#ifdef DEBUG_TLS
 		mbedtls_debug_set_threshold(DEBUG_TLS);
 		config->setDebugCallback(tlsDebugCallback, this);
 	#endif  //
+	QMutexLocker lock(&mMtxTls);
 	mTls->initialize(config);
 	setState(csEncrypted);
-	std::swap(mIncomingData, mIncomingDataEncrypted);  // All the data received from the socket after the "stls" is expected to be TLSed
-	processTls();
 
 	// Set up the command channel:
 	auto ch0 = std::make_shared<ChannelZero>(*this);
@@ -1165,6 +1179,7 @@ void Connection::processTls()
 		// Write the outgoing data, if possible:
 		if (!mOutgoingDataPlain.isEmpty())
 		{
+			QMutexLocker lock(&mMtxTls);
 			auto numWritten = mTls->writePlain(mOutgoingDataPlain.constData(), static_cast<size_t>(mOutgoingDataPlain.size()));
 			if (numWritten > 0)
 			{
@@ -1183,7 +1198,11 @@ void Connection::processTls()
 
 		// Read the incoming data, if possible:
 		char buffer[3000];
-		auto numRead = mTls->readPlain(buffer, sizeof(buffer));
+		int numRead;
+		{
+			QMutexLocker lock(&mMtxTls);
+			numRead = mTls->readPlain(buffer, sizeof(buffer));
+		}
 		if (numRead > 0)
 		{
 			mIncomingData.append(buffer, numRead);
@@ -1232,7 +1251,9 @@ int Connection::sendEncrypted(const unsigned char * aBuffer, size_t aNumBytes)
 		QByteArray(reinterpret_cast<const char *>(aBuffer), static_cast<int>(aNumBytes)),
 		"Outgoing encrypted data (%1 bytes)", aNumBytes
 	);
-	return static_cast<int>(mIO->write(reinterpret_cast<const char *>(aBuffer), static_cast<qint64>(aNumBytes)));
+	auto res = static_cast<int>(mIO->write(reinterpret_cast<const char *>(aBuffer), static_cast<qint64>(aNumBytes)));
+	mLogger.log("Sent %1 bytes of the outgoing data.", res);
+	return res;
 }
 
 

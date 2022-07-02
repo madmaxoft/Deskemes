@@ -220,8 +220,12 @@ protected:
 	/** The logger used for all messages produced by this class. */
 	Logger & mLogger;
 
-	/** The interface to the TLS codec in PolarSSL,for decoding the TLS communication. */
+	/** The interface to the TLS codec in PolarSSL,for decoding the TLS communication.
+	Protexted against multithreaded access using mMtxTls. */
 	std::unique_ptr<CallbackSslContext> mTls;
+
+	/** The mutex protecting mTls against multithreaded access. */
+	QMutex mMtxTls;
 
 
 	/** Checks whether the remote public key and ID pair is known.

@@ -718,6 +718,7 @@ end
 
 
 --- Connects to the client at the specified TCP endpoint and emulates a device
+-- Blocks until the connection is closed for whatever reason!
 function Device:connect(aIP, aTcpPort, aBeaconPublicID)
 	assert(type(self) == "table")
 	assert(type(aIP) == "string")

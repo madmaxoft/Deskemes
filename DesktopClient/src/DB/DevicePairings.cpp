@@ -143,7 +143,7 @@ void DevicePairings::createLocalKeyPair(const QByteArray & aDevicePublicID, cons
 	RsaPrivateKey rpk;
 	#ifdef _DEBUG
 		// Generating is very slow in debug builds, use shorter keys
-		rpk.generate(1024);
+		rpk.generate(2048);
 	#else
 		rpk.generate(4096);
 	#endif

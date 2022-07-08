@@ -8,21 +8,34 @@ import android.database.sqlite.SQLiteOpenHelper;
 import android.util.Base64;
 import android.util.Log;
 
+import java.math.BigInteger;
+import java.net.Socket;
 import java.security.KeyFactory;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
+import java.security.Principal;
 import java.security.PrivateKey;
 import java.security.PublicKey;
+import java.security.SecureRandom;
+import java.security.cert.CertificateException;
+import java.security.cert.X509Certificate;
 import java.security.spec.EncodedKeySpec;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.PKCS8EncodedKeySpec;
-import java.security.spec.RSAPrivateKeySpec;
-import java.security.spec.RSAPublicKeySpec;
 import java.security.spec.X509EncodedKeySpec;
+import java.util.Date;
 
+import javax.net.ssl.SSLEngine;
 
-
+import org.spongycastle.asn1.x500.X500Name;
+import org.spongycastle.cert.X509CertificateHolder;
+import org.spongycastle.cert.X509v3CertificateBuilder;
+import org.spongycastle.cert.jcajce.JcaX509CertificateConverter;
+import org.spongycastle.cert.jcajce.JcaX509v3CertificateBuilder;
+import org.spongycastle.jce.provider.BouncyCastleProvider;
+import org.spongycastle.operator.ContentSigner;
+import org.spongycastle.operator.jcajce.JcaContentSignerBuilder;
 
 
 /** Manages (and persists) the list of all peers that have been approved-paired by the user.
@@ -112,7 +125,7 @@ class ApprovedPeers
 
 		/** Decodes the local keypair data into an actual KeyPair instance.
 		Returns null if the data cannot be decoded. */
-		KeyPair getLocalKeyPair()
+		public KeyPair getLocalKeyPair()
 		{
 			EncodedKeySpec pubKeySpec = new X509EncodedKeySpec(mLocalPublicKeyData);
 			EncodedKeySpec privKeySpec = new PKCS8EncodedKeySpec(mLocalPrivateKeyData);
@@ -131,12 +144,171 @@ class ApprovedPeers
 			}
 			return new KeyPair(pubKey, privKey);
 		}
+
+
+
+
+
+		/** Returns an array of KeyManager instances that can be used for SSLContext initialization. */
+		javax.net.ssl.KeyManager[] getKeyManagers()
+		{
+			return new javax.net.ssl.KeyManager[]{new KeyManager(this)};
+		}
+
+
+
+
+		/** Returns an array of TrustManager instances that can be used for SSLContext initialization. */
+		javax.net.ssl.TrustManager[] getTrustManagers()
+		{
+			return new javax.net.ssl.TrustManager[]{new TrustManager(this)};
+		}
 	}
 
 
 
 
 
+	/** A KeyManager implementation that provides the Peer's assigned private key. */
+	final class KeyManager implements javax.net.ssl.X509KeyManager
+	{
+		/** The Peer for which the Keymanager instance has been created. */
+		private Peer mPeer;
+
+		/** The kees to be used for the local end of the communication channel. */
+		private KeyPair mLocalKeyPair;
+
+		public KeyManager(Peer aPeer)
+		{
+			mPeer = aPeer;
+			mLocalKeyPair = aPeer.getLocalKeyPair();
+		}
+
+		@Override
+		public String[] getClientAliases(String s, Principal[] principals)
+		{
+			return new String[0];
+		}
+
+		@Override
+		public String chooseClientAlias(String[] strings, Principal[] principals, Socket socket)
+		{
+			return null;
+		}
+
+		@Override
+		public String[] getServerAliases(String s, Principal[] principals)
+		{
+			// We only support connections to a server (we're a client)
+			return null;
+		}
+
+		@Override
+		public String chooseServerAlias(String s, Principal[] principals, Socket socket)
+		{
+			// We only support connections to a server (we're a client)
+			return null;
+		}
+
+		@Override
+		public X509Certificate[] getCertificateChain(String s)
+		{
+			X500Name issuer = new X500Name("CN=Deskemes");
+			BigInteger serial = BigInteger.probablePrime(16, new SecureRandom());
+			Date notBefore = new Date(System.currentTimeMillis() - 24 * 60 * 60 * 1000);
+			Date notAfter = new Date(notBefore.getTime() + 365 * 24 * 60 * 60 * 1000);
+
+			final X509Certificate cert;
+			try
+			{
+				final X509v3CertificateBuilder
+				new BigInteger(64, new SecureRandom()),
+						notBefore,
+						notAfter,
+						issuer,
+						mLocalKeyPair.getPublic()
+				);
+				final ContentSigner signer = new JcaContentSignerBuilder("SHA256WithRSAEncryption").build(mLocalKeyPair.getPrivate());
+				final X509CertificateHolder certHolder = builder.build(signer);
+				cert = new JcaX509CertificateConverter(). builder = new JcaX509v3CertificateBuilder(
+					issuer,setProvider(new BouncyCastleProvider()).getCertificate(certHolder);
+				cert.verify(mLocalKeyPair.getPublic());
+			}
+			catch (Throwable t)
+			{
+				return null;
+			}
+			return new X509Certificate[]{cert};
+		}
+
+		@Override
+		public PrivateKey getPrivateKey(String s)
+		{
+			return mLocalKeyPair.getPrivate();
+		}
+	}  // class KeyManager
+
+
+
+
+
+	final class TrustManager extends javax.net.ssl.X509ExtendedTrustManager
+	{
+		/** The Peer for which this TrustManager instance has been created. */
+		private Peer mPeer;
+
+
+		public TrustManager(Peer aPeer)
+		{
+			mPeer = aPeer;
+		}
+
+		@Override
+		public void checkClientTrusted(X509Certificate[] aCerts, String aAuthType) throws CertificateException
+		{
+			// We only support server connections
+			throw new CertificateException();
+		}
+
+		@Override
+		public void checkServerTrusted(X509Certificate[] aCerts, String aAuthType) throws CertificateException
+		{
+			// TODO: Check the server cert against mPeer's public key
+		}
+
+		@Override
+		public X509Certificate[] getAcceptedIssuers()
+		{
+			return null;
+		}
+
+		@Override
+		public void checkClientTrusted(X509Certificate[] x509Certificates, String s, Socket socket) throws CertificateException
+		{
+			// We only support server connections
+			throw new CertificateException();
+		}
+
+		@Override
+		public void checkServerTrusted(X509Certificate[] x509Certificates, String s, Socket socket) throws CertificateException
+		{
+			// We only support connections through a SSLEngine
+			throw new CertificateException();
+		}
+
+		@Override
+		public void checkClientTrusted(X509Certificate[] x509Certificates, String s, SSLEngine sslEngine) throws CertificateException
+		{
+			// We only support server connections
+			throw new CertificateException();
+		}
+
+		@Override
+		public void checkServerTrusted(X509Certificate[] x509Certificates, String s, SSLEngine sslEngine) throws CertificateException
+		{
+			// TODO
+		}
+	}
 	/** The tag used for logging. */
 	private static final String TAG = "ApprovedPeers";
 

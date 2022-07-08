@@ -18,12 +18,15 @@ import java.nio.ByteOrder;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
+import java.security.KeyPair;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
-
-
+import javax.net.ssl.KeyManager;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLEngine;
+import javax.net.ssl.TrustManager;
 
 
 /** A single TCP connection and its protocol-parsing machinery.
@@ -114,7 +117,7 @@ class Connection
 
 
 
-	// The individual cleartext message types (translated from ASCII strings to ints):
+	// The individual cleartext message types (translated from ASCII strings to BE ints):
 	private final static int msg_dsms = 0x64736d73;
 	private final static int msg_fnam = 0x666e616d;
 	private final static int msg_avtr = 0x61767472;
@@ -201,6 +204,9 @@ class Connection
 
 	/** The ConnectionMgr that takes care of this connection. */
 	private ConnectionMgr mConnMgr;
+
+	/** The TLS engine responsible for encryption / decryption of the connection data. */
+	private SSLEngine mSslEngine;
 
 
 
@@ -424,12 +430,12 @@ class Connection
 
 		switch (aMsgType)
 		{
-			case msg_dsms: handleDsmsMessage(aMsgData); break;
-			case msg_pubi: handlePubiMessage(aMsgData); break;
-			case msg_pubk: handlePubkMessage(aMsgData); break;
-			case msg_stls: handleStlsMessage(aMsgData); break;
-			case msg_fnam: handleFnamMessage(aMsgData); break;
-			case msg_pair: handlePairMessage(aMsgData); break;
+			case msg_dsms: handleMessageDsms(aMsgData); break;
+			case msg_pubi: handleMessagePubi(aMsgData); break;
+			case msg_pubk: handleMessagePubk(aMsgData); break;
+			case msg_stls: handleMessageStls(aMsgData); break;
+			case msg_fnam: handleMessageFnam(aMsgData); break;
+			case msg_pair: handleMessagePair(aMsgData); break;
 			case msg_avtr: // handleAvtrMessage(aMsgData); break;
 				// TODO: dummy
 				Log.d(TAG, "Ignoring message");
@@ -449,7 +455,7 @@ class Connection
 
 	/** Handles the `fnam` cleartext protocol message.
 	Stores the received friendly name. */
-	private void handleFnamMessage(byte[] aMsgData)
+	private void handleMessageFnam(byte[] aMsgData)
 	{
 		mFriendlyName = Utils.utf8ToString(aMsgData);
 	}
@@ -460,7 +466,7 @@ class Connection
 
 	/** Handles the `pair` cleartext protocol message.
 	Notifies the user that there's a pairing request. */
-	private void handlePairMessage(byte[] aMsgData)
+	private void handleMessagePair(byte[] aMsgData)
 	{
 		mApprovedPeer = null;  // Clear any pairing we might have had for this connection
 		notifyUserUnapprovedPeer();
@@ -472,7 +478,7 @@ class Connection
 
 	/** Handles the `pubi` cleartext protocol message.
 	Verifies that the public ID is the same as received in the beacon. */
-	private void handlePubiMessage(byte[] aMsgData)
+	private void handleMessagePubi(byte[] aMsgData)
 	{
 		mRemotePublicID = aMsgData;
 		if ((mBeaconPublicID != null) && !Arrays.equals(aMsgData, mBeaconPublicID))
@@ -495,7 +501,7 @@ class Connection
 	/** Handles the `pubk` cleartext protocol message.
 	Checks that we have already received the remote's PublicID and we haven't received
 	its PublicKey yet. Stores the Public key for later use in encryption. */
-	private void handlePubkMessage(byte[] aMsgData)
+	private void handleMessagePubk(byte[] aMsgData)
 	{
 		if ((mRemotePublicID == null) || (mRemotePublicKey != null))
 		{
@@ -528,7 +534,7 @@ class Connection
 
 	/** Handles the `stls` cleartext protocol message.
 	Checks that we have everything needed for TLS, then switches to the TLS Mux protocol. */
-	private void handleStlsMessage(byte[] aMsgData)
+	private void handleMessageStls(byte[] aMsgData)
 	{
 		if ((mRemotePublicID == null) || (mRemotePublicKey == null))
 		{
@@ -553,8 +559,8 @@ class Connection
 			sendCleartextMessage("stls");
 		}
 
-		// TODO: TLS
 		mMuxChannels.put((short)0, new MuxChannelZero(this));
+		startTls();
 	}
 
 
@@ -603,7 +609,7 @@ class Connection
 
 	/** Handles the `dsms` cleartext protocol message.
 	Checks the protocol version, and sends our own data. */
-	private void handleDsmsMessage(byte[] aMsgData)
+	private void handleMessageDsms(byte[] aMsgData)
 	{
 		ByteArrayReader bar = new ByteArrayReader(aMsgData);
 		if (!bar.checkAsciiString("Deskemes"))
@@ -851,5 +857,24 @@ class Connection
 
 		Log.d(TAG, "Starting TLS");
 		sendCleartextMessage("stls");
+	}
+
+
+
+
+
+	private void startTls()
+	{
+		assert(mApprovedPeer != null);
+		try
+		{
+			SSLContext sslContext = SSLContext.getInstance("TLS");
+			sslContext.init(mApprovedPeer.getKeyManagers(), mApprovedPeer.getTrustManagers(), null);
+			mSslEngine = sslContext.createSSLEngine();
+		}
+		catch (Exception exc)
+		{
+			Log.w("Failed to start TLS", exc);
+		}
 	}
 }

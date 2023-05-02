@@ -77,8 +77,8 @@ endif()
 
 
 
-add_subdirectory(lib/PolarSSL     EXCLUDE_FROM_ALL)
-add_subdirectory(lib/PolarSSL-cpp EXCLUDE_FROM_ALL)
+add_subdirectory(Lib/PolarSSL     EXCLUDE_FROM_ALL)
+add_subdirectory(Lib/PolarSSL-cpp EXCLUDE_FROM_ALL)
 
 
 
@@ -146,127 +146,127 @@ add_definitions(-DQT_MESSAGELOGCONTEXT)
 # Source files:
 set(SOURCES
 	# The Communication-related sources:
-	src/Comm/AdbAppInstaller.cpp
-	src/Comm/AdbCommunicator.cpp
-	src/Comm/Connection.cpp
-	src/Comm/ConnectionMgr.cpp
-	src/Comm/DetectedDevices.cpp
-	src/Comm/TcpListener.cpp
-	src/Comm/UdpBroadcaster.cpp
-	src/Comm/UsbDeviceEnumerator.cpp
+	Src/Comm/AdbAppInstaller.cpp
+	Src/Comm/AdbCommunicator.cpp
+	Src/Comm/Connection.cpp
+	Src/Comm/ConnectionMgr.cpp
+	Src/Comm/DetectedDevices.cpp
+	Src/Comm/TcpListener.cpp
+	Src/Comm/UdpBroadcaster.cpp
+	Src/Comm/UsbDeviceEnumerator.cpp
 
 	# The Comm Channel protocols:
-	src/Comm/Channels/ChannelSmsSend.cpp
-	src/Comm/Channels/InfoChannel.cpp
+	Src/Comm/Channels/ChannelSmsSend.cpp
+	Src/Comm/Channels/InfoChannel.cpp
 
 	# DB-related sources:
-	src/DB/Database.cpp
-	src/DB/DatabaseBackup.cpp
-	src/DB/DatabaseUpgrade.cpp
-	src/DB/DevicePairings.cpp
-	src/DB/DeviceBlacklist.cpp
+	Src/DB/Database.cpp
+	Src/DB/DatabaseBackup.cpp
+	Src/DB/DatabaseUpgrade.cpp
+	Src/DB/DevicePairings.cpp
+	Src/DB/DeviceBlacklist.cpp
 
 	# The UI sources:
-	src/UI/DetectedDevicesModel.cpp
-	src/UI/DlgSendText.cpp
-	src/UI/NewDeviceWizard.cpp
-	src/UI/WgtDevice.cpp
-	src/UI/WgtImage.cpp
-	src/UI/WndDevices.cpp
+	Src/UI/DetectedDevicesModel.cpp
+	Src/UI/DlgSendText.cpp
+	Src/UI/NewDeviceWizard.cpp
+	Src/UI/WgtDevice.cpp
+	Src/UI/WgtImage.cpp
+	Src/UI/WndDevices.cpp
 
 	# The Wizard pages:
-	src/UI/Pages/PgDeviceList.cpp
-	src/UI/Pages/PgNeedApp.cpp
-	src/UI/Pages/PgNeedAuth.cpp
-	src/UI/Pages/PgPairConfirm.cpp
-	src/UI/Pages/PgPairInit.cpp
-	src/UI/Pages/PgPairingInProgress.cpp
-	src/UI/Pages/PgSucceeded.cpp
+	Src/UI/Pages/PgDeviceList.cpp
+	Src/UI/Pages/PgNeedApp.cpp
+	Src/UI/Pages/PgNeedAuth.cpp
+	Src/UI/Pages/PgPairConfirm.cpp
+	Src/UI/Pages/PgPairInit.cpp
+	Src/UI/Pages/PgPairingInProgress.cpp
+	Src/UI/Pages/PgSucceeded.cpp
 
-	src/BackgroundTasks.cpp
-	src/ComponentCollection.cpp
-	src/DebugLogger.cpp
-	src/Device.cpp
-	src/DeviceMgr.cpp
-	src/InstallConfiguration.cpp
-	src/Logger.cpp
-	src/main.cpp
-	src/MultiLogger.cpp
-	src/Settings.cpp
-	src/Utils.cpp
+	Src/BackgroundTasks.cpp
+	Src/ComponentCollection.cpp
+	Src/DebugLogger.cpp
+	Src/Device.cpp
+	Src/DeviceMgr.cpp
+	Src/InstallConfiguration.cpp
+	Src/Logger.cpp
+	Src/main.cpp
+	Src/MultiLogger.cpp
+	Src/Settings.cpp
+	Src/Utils.cpp
 )
 
 set(HEADERS
 	# The Communication-related headers:
-	src/Comm/AdbCommunicator.hpp
-	src/Comm/AdbAppInstaller.hpp
-	src/Comm/Connection.hpp
-	src/Comm/ConnectionMgr.hpp
-	src/Comm/DetectedDevices.hpp
-	src/Comm/TcpListener.hpp
-	src/Comm/UdpBroadcaster.hpp
-	src/Comm/UsbDeviceEnumerator.hpp
+	Src/Comm/AdbCommunicator.hpp
+	Src/Comm/AdbAppInstaller.hpp
+	Src/Comm/Connection.hpp
+	Src/Comm/ConnectionMgr.hpp
+	Src/Comm/DetectedDevices.hpp
+	Src/Comm/TcpListener.hpp
+	Src/Comm/UdpBroadcaster.hpp
+	Src/Comm/UsbDeviceEnumerator.hpp
 
 	# The Comm Channel protocols:
-	src/Comm/Channels/ChannelSmsSend.hpp
-	src/Comm/Channels/InfoChannel.hpp
+	Src/Comm/Channels/ChannelSmsSend.hpp
+	Src/Comm/Channels/InfoChannel.hpp
 
 	# DB-related headers:
-	src/DB/Database.hpp
-	src/DB/DatabaseBackup.hpp
-	src/DB/DatabaseUpgrade.hpp
-	src/DB/DevicePairings.hpp
-	src/DB/DeviceBlacklist.hpp
+	Src/DB/Database.hpp
+	Src/DB/DatabaseBackup.hpp
+	Src/DB/DatabaseUpgrade.hpp
+	Src/DB/DevicePairings.hpp
+	Src/DB/DeviceBlacklist.hpp
 
 	# The UI headers:
-	src/UI/DetectedDevicesModel.hpp
-	src/UI/DlgSendText.hpp
-	src/UI/NewDeviceWizard.hpp
-	src/UI/WgtDevice.hpp
-	src/UI/WgtImage.hpp
-	src/UI/WndDevices.hpp
+	Src/UI/DetectedDevicesModel.hpp
+	Src/UI/DlgSendText.hpp
+	Src/UI/NewDeviceWizard.hpp
+	Src/UI/WgtDevice.hpp
+	Src/UI/WgtImage.hpp
+	Src/UI/WndDevices.hpp
 
 	# The Wizard pages:
-	src/UI/Pages/PgDeviceList.hpp
-	src/UI/Pages/PgNeedApp.hpp
-	src/UI/Pages/PgNeedAuth.hpp
-	src/UI/Pages/PgPairConfirm.hpp
-	src/UI/Pages/PgPairInit.hpp
-	src/UI/Pages/PgPairingInProgress.hpp
-	src/UI/Pages/PgSucceeded.hpp
+	Src/UI/Pages/PgDeviceList.hpp
+	Src/UI/Pages/PgNeedApp.hpp
+	Src/UI/Pages/PgNeedAuth.hpp
+	Src/UI/Pages/PgPairConfirm.hpp
+	Src/UI/Pages/PgPairInit.hpp
+	Src/UI/Pages/PgPairingInProgress.hpp
+	Src/UI/Pages/PgSucceeded.hpp
 
-	src/BackgroundTasks.hpp
-	src/ComponentCollection.hpp
-	src/DebugLogger.hpp
-	src/Device.hpp
-	src/DeviceMgr.hpp
-	src/Exception.hpp
-	src/InstallConfiguration.hpp
-	src/Logger.hpp
-	src/MultiLogger.hpp
-	src/Optional.hpp
-	src/Settings.hpp
-	src/Utils.hpp
+	Src/BackgroundTasks.hpp
+	Src/ComponentCollection.hpp
+	Src/DebugLogger.hpp
+	Src/Device.hpp
+	Src/DeviceMgr.hpp
+	Src/Exception.hpp
+	Src/InstallConfiguration.hpp
+	Src/Logger.hpp
+	Src/MultiLogger.hpp
+	Src/Optional.hpp
+	Src/Settings.hpp
+	Src/Utils.hpp
 )
 
 set(UI
-	src/UI/DlgSendText.ui
-	src/UI/WgtDevice.ui
-	src/UI/WndDevices.ui
+	Src/UI/DlgSendText.ui
+	Src/UI/WgtDevice.ui
+	Src/UI/WndDevices.ui
 
-	src/UI/Pages/PgDeviceList.ui
-	src/UI/Pages/PgNeedApp.ui
-	src/UI/Pages/PgNeedAuth.ui
-	src/UI/Pages/PgPairConfirm.ui
-	src/UI/Pages/PgPairInit.ui
-	src/UI/Pages/PgPairingInProgress.ui
+	Src/UI/Pages/PgDeviceList.ui
+	Src/UI/Pages/PgNeedApp.ui
+	Src/UI/Pages/PgNeedAuth.ui
+	Src/UI/Pages/PgPairConfirm.ui
+	Src/UI/Pages/PgPairInit.ui
+	Src/UI/Pages/PgPairingInProgress.ui
 )
 
 set(RESOURCES
-	res/Deskemes.qrc
-	res/img/usb.png
-	res/img/wifi.png
-	res/img/bluetooth.png
+	Res/Deskemes.qrc
+	Res/img/usb.png
+	Res/img/wifi.png
+	Res/img/bluetooth.png
 )
 
 set(DEVDOCS
@@ -278,13 +278,13 @@ set(DEVDOCS
 
 if(WIN32)
 	list(APPEND RESOURCES
-		res/win.rc
-		res/img/Deskemes.ico
+		Res/win.rc
+		Res/img/Deskemes.ico
 	)
 endif()
 
 set(TSFILES
-	translations/Deskemes_cs.ts
+	Translations/Deskemes_cs.ts
 )
 
 
@@ -293,8 +293,8 @@ set(TSFILES
 
 # Special handling: The WgtImage.hpp file needs to be accessible from ui_PgPairConfirm.h, included from PgPairConfirm.cpp:
 set_source_files_properties (
-	src/UI/Pages/PgPairConfirm.cpp
-	PROPERTIES COMPILE_FLAGS "-I${CMAKE_CURRENT_SOURCE_DIR}/src/UI"
+	Src/UI/Pages/PgPairConfirm.cpp
+	PROPERTIES COMPILE_FLAGS "-I${CMAKE_CURRENT_SOURCE_DIR}/Src/UI"
 )
 
 

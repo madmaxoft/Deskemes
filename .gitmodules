@@ -1,6 +1,6 @@
 [submodule "DesktopClient/lib/PolarSSL"]
-	path = DesktopClient/lib/PolarSSL
+	path = DesktopClient/Lib/PolarSSL
 	url = https://github.com/madmaxoft/polarssl
 [submodule "DesktopClient/lib/PolarSSL-cpp"]
-	path = DesktopClient/lib/PolarSSL-cpp
+	path = DesktopClient/Lib/PolarSSL-cpp
 	url = https://github.com/madmaxoft/polarssl-cpp
